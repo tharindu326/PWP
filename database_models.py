@@ -33,26 +33,3 @@ class AccessLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     access_request_id = db.Column(db.Integer, db.ForeignKey('access_requests.id'))
     details = db.Column(db.String(255))
-
-
-if __name__ == '__main__':
-    db.drop_all()
-    db.create_all()
-
-    # create user
-    user1 = UserProfile(name="Tharindu", facial_data=b'SampleFacialData')
-    db.session.add(user1)
-
-    # create permission for the user
-    permission1 = AccessPermission(permission_level="Admin", user_profile=user1)
-    db.session.add(permission1)
-
-    # create access request for the user
-    access_request1 = AccessRequest(outcome="Granted", user_profile=user1)
-    db.session.add(access_request1)
-
-    # create access log for the request
-    access_log1 = AccessLog(details="Entry door accessed", access_request=access_request1)
-    db.session.add(access_log1)
-
-    db.session.commit()

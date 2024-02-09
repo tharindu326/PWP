@@ -1,0 +1,6 @@
+flask_sqlalchemy
+flask
+easydict
+opencv-python
+ultralytics # for face detection
+

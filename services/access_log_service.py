@@ -1,4 +1,4 @@
-from PWP.database_models import AccessLog, AccessRequest, db
+from database_models import AccessLog, AccessRequest, db
 # from sqlalchemy import func
 
 

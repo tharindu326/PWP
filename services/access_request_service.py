@@ -1,4 +1,4 @@
-from PWP.database_models import AccessRequest, db
+from database_models import AccessRequest, db
 
 
 def log_access_request(user_id, outcome):

@@ -1,4 +1,4 @@
-from PWP.database_models import AccessPermission, db
+from database_models import AccessPermission, db
 
 
 def add_permission_to_user(user_id, permission_level):

@@ -1,4 +1,4 @@
-from PWP.database_models import UserProfile, db
+from database_models import UserProfile, db
 
 
 def add_user(name, facial_data):

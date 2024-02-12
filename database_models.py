@@ -25,6 +25,7 @@ class AccessRequest(db.Model):
     user_profile_id = db.Column(db.Integer, db.ForeignKey('user_profiles.id'))
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
     outcome = db.Column(db.String(50))
+    associated_permission = db.Column(db.String(50))  # minimum access/ access groups
     access_logs = db.relationship('AccessLog', backref='access_request', lazy=True)
 
 

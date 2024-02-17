@@ -1,5 +1,5 @@
 from ultralytics import YOLO
-from PWP.config import cfg
+from config import cfg
 import cv2
 
 

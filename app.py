@@ -17,22 +17,22 @@ db.init_app(app)
 def main():
     with app.app_context():
         # create user
-        face_image = 'data/Obama.jpg'
+        face_image = 'data/Alexander.jpg'
         with open(face_image, 'rb') as file:
-            blobData_face_Obama = file.read()
+            blobData_face_Alexander = file.read()
 
-        face_image = 'data/Biden.jpg'
+        face_image = 'data/Putin.jpg'
         with open(face_image, 'rb') as file:
-            blobData_face_Biden = file.read()
+            blobData_face_Putin = file.read()
 
-        face_image = 'data/Trump.jpg'
+        face_image = 'data/Rishi.jpg'
         with open(face_image, 'rb') as file:
-            blobData_face_Trump = file.read()
+            blobData_face_Rishi = file.read()
 
         # USER SERVICES
-        add_user("Biden", blobData_face_Biden)
-        add_user("Trump", blobData_face_Trump)
-        add_user("Obama", blobData_face_Obama)
+        add_user("Alexander", blobData_face_Alexander)
+        add_user("Putin", blobData_face_Putin)
+        add_user("Rishi", blobData_face_Rishi)
 
         # Fetch and print user profile
         user = get_user_profile(1)
@@ -49,12 +49,12 @@ def main():
 
         # PERMISSION SERVICES
         # the access group can have different properties and they are managed by the client side
-        add_permission_to_user(1, "Admin")  # Visitor, Employee, Supervisor, Security, Maintenance, Admin
-        add_permission_to_user(1, "Employee")
-        add_permission_to_user(2, "Supervisor")
-        add_permission_to_user(2, "Employee")
-        add_permission_to_user(3, "Security")
-        add_permission_to_user(3, "Employee")
+        add_permission_to_user(13, "Admin")  # Visitor, Employee, Supervisor, Security, Maintenance, Admin
+        add_permission_to_user(14, "Employee")
+        add_permission_to_user(15, "Supervisor")
+        add_permission_to_user(12, "Employee")
+        add_permission_to_user(13, "Security")
+        add_permission_to_user(10, "Admin")
 
         # Get and print permissions for a user
         permissions = get_user_permissions(2)
@@ -62,10 +62,10 @@ def main():
             print(f"Permission: {permission.permission_level}")
 
         # Revoke a specific permission
-        revoke_user_permissions(1, "Admin")
+        revoke_user_permissions(10, "Admin")
 
         # Revoke all permissions for user 3
-        revoke_user_permissions(3)
+        revoke_user_permissions(7)
 
         # ACCESS REQUEST SERVICES
         # for every incoming access requests with their required permission/permission list

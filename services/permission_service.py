@@ -13,8 +13,8 @@ def get_user_permissions(user_id):
 
 def validate_access_for_user(user_id, required_permission_level):
     user_permissions = AccessPermission.query.filter_by(user_profile_id=user_id).all()
-    for permission in user_permissions:
-        if permission.permission_level == required_permission_level:
+    for user_permission in user_permissions:
+        if user_permission.permission_level == required_permission_level:
             return True
     return False
 

@@ -26,6 +26,7 @@ class AccessRequest(db.Model):
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
     outcome = db.Column(db.String(50))
     associated_permission = db.Column(db.String(50))  # minimum access/ access groups
+    associated_facial_data = db.Column(db.LargeBinary)
     access_logs = db.relationship('AccessLog', backref='access_request', lazy=True)
 
 

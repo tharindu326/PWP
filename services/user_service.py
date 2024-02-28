@@ -5,6 +5,7 @@ def add_user(name, facial_data):
     new_user = UserProfile(name=name, facial_data=facial_data)
     db.session.add(new_user)
     db.session.commit()
+    return new_user.id
 
 
 def get_user_profile(user_id):

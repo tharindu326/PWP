@@ -25,7 +25,7 @@ def revoke_user_permissions(user_id, permission_level=None):
         AccessPermission.query.filter_by(user_profile_id=user_id, permission_level=permission_level).delete()
     else:
         # Revoke all permissions
-        # also if no specific level is provided it will also revoe all
+        # also if no specific level is provided it will also revoke all
         AccessPermission.query.filter_by(user_profile_id=user_id).delete()
     db.session.commit()
 

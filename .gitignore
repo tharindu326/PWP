@@ -1,5 +1,9 @@
 __pycache__/
+.idea/
 logs/
 database/
 instance/
+face_engine/model_data/
 test.py
+*.jpg
+*.png

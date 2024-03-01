@@ -21,12 +21,12 @@ Additionally, the discussion covered the application of APIs and their clients, 
 * **ASSISTANTS:**
 
 ### Minutes
-*Summary of what was discussed during the meeting*
+This meeting focused on the database design and code with Mika. The database design was appreciated. In wiki, there were relationships added in the table which were asked to be removed. On the code side, we were asked to add the on_delete behavior for the tables. Lastly we were asked to move the code for populating the DB to a CLI handler instead of implementing it in app main function.
 
 ### Action points
-*List here the actions points discussed with assistants*
-
-
+* relationships are not part of database table
+* no on_delete behavior defined explicitly
+* move database population from main() to a CLI handler
 
 
 ## Meeting 3.

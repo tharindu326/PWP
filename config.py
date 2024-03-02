@@ -50,3 +50,4 @@ __C.recognizer.distance_type = 'Euclidean'  # ['Cosine', 'Euclidean']  # availab
 __C.recognizer.model = "Facenet512"  # ["VGGFace", "OpenFace", "Facenet", "FbDeepFace", "ArcFace", "Facenet512", "DeepID", "DlibResNet", "DlibWrapper", "SFaceWrapper"]  # face recognition algorithm options.
 __C.recognizer.threshold = 30
 __C.recognizer.model_path = 'face_engine/model_data/model_svc.pkl'
+__C.recognizer.embedding_file_path = 'face_engine/model_data/embeddings.pkl'

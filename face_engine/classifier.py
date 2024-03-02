@@ -7,6 +7,7 @@ from face_engine.encoder import Encoder
 from sklearn.svm import SVC
 import joblib
 import pickle
+import numpy as np
 
 
 class Classifier:
@@ -15,12 +16,18 @@ class Classifier:
         self.names = []
         self.encodings = []
         self.clf = SVC(probability=True)
-        if not os.path.isfile(cfg.recognizer.embedding_file_pat):
-            self.get_all_embeddings()
-            self.save_embeddings()
+        if not os.path.isfile(cfg.recognizer.embedding_file_path):
+            if len(os.listdir(cfg.db.database)) != 0:
+                print(f'Not found: {cfg.recognizer.embedding_file_path} and {len(os.listdir(cfg.db.database))} records existing in Database,'
+                      f' start generating embeddings for existing faces')
+                self.get_all_embeddings()
+        else:
+            self.encodings = joblib.load(cfg.recognizer.embedding_file_path)
+            print(f'Loaded Embeddings: {np.asarray(self.encodings).shape} and labels: {len(self.names)} belongs to : '
+                  f'{np.unique(np.asarray(self.names))} unique peoples')
 
-        if not os.path.isfile(cfg.recognizer.model_path):
-            self.clf = joblib.load('model_svc.pkl')
+        if os.path.isfile(cfg.recognizer.model_path):
+            self.clf = joblib.load(cfg.recognizer.model_path)
 
     def get_all_embeddings(self):
         print('[INFO] extracting encodings ....')
@@ -30,10 +37,12 @@ class Classifier:
                 for image in os.listdir(f'{cfg.db.database}{ID}'):
                     try:
                         face_encode = self.reco.encode(f'{cfg.db.database}{ID}/{image}')
+                        self.names.append(ID)
+                        self.encodings.append(face_encode)
                     except Exception as e:
                         print(f'[ERROR] {cfg.db.database}{ID}/{image} : {e}')
-                    self.names.append(ID)
-                    self.encodings.append(face_encode)
+        print(f'Generated Embeddings: {np.asarray(self.encodings).shape} and labels: {len(self.names)} belongs to : '
+              f'{np.unique(np.asarray(self.names))} unique peoples')
         self.save_embeddings()
 
     def save_embeddings(self):
@@ -48,10 +57,10 @@ class Classifier:
             for image in os.listdir(f'{cfg.db.database}{user_id}'):
                 try:
                     face_encode = self.reco.encode(f'{cfg.db.database}{user_id}/{image}')
+                    self.names.append(user_id)
+                    self.encodings.append(face_encode)
                 except Exception as e:
                     print(f'[ERROR] {cfg.db.database}{user_id}/{image} : {e}')
-                self.names.append(user_id)
-                self.encodings.append(face_encode)
             self.save_embeddings()
         else:
             print(f'Error: no user found {user_id} in {user_path}')
@@ -63,3 +72,4 @@ class Classifier:
         self.clf.score(self.encodings, self.names)
         print('[INFO] saving the model ....')
         joblib.dump(self.clf, cfg.recognizer.model_path)
+        self.save_embeddings()

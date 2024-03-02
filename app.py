@@ -1,14 +1,20 @@
+import sys
+import os
+import time
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from flask import Flask, request, jsonify
 from config import cfg
-from services.access_log_service import *
-from services.access_request_service import *
-from services.permission_service import *
-from services.user_service import *
-import os
+from services.access_log_service import add_access_log, add_access_log, db
+from services.access_request_service import get_access_requests, log_access_request
+from services.permission_service import add_permission_to_user, get_user_permissions, validate_access_for_user, revoke_user_permissions
+from services.user_service import delete_user_profile, get_user_profile, update_user_facial_data, add_user
 import numpy as np
 import cv2
 from face_engine.detector import Inference
 from face_engine.classifier import Classifier
+from flask_sqlalchemy import SQLAlchemy
+
 
 inference = Inference()
 classifier = Classifier()
@@ -35,7 +41,7 @@ def register_person():
     if not files or any(file.filename == '' for file in files):
         return jsonify({'error': 'No image file/files provided'}), 400
 
-    permissions_list = request.form.getlist('permissions')
+    permissions_list = request.form.getlist('permission')
     if not permissions_list:
         return jsonify({'error': 'please provide associated permission levels for the user'}), 400
     else:
@@ -54,7 +60,13 @@ def register_person():
                     x, y, w, h = [int(item) for item in box]
                     cropped_face = frame_out[y: y + h, x: x + w]
                     if user_id is None:
-                        user_id = add_user(name, cropped_face.tobytes())
+                        os.makedirs('temp/', exist_ok=True)
+                        temp_im = f'temp/{time.monotonic()}.jpg'
+                        cv2.imwrite(temp_im, cropped_face)
+                        with open(temp_im, 'rb') as f:
+                            Bim = f.read()
+                            user_id = add_user(name, Bim)
+                        os.remove(temp_im)
                     cropped_face_path = os.path.join(app.config['UPLOAD_FOLDER'], str(user_id), f'face_{i}_{idx}.jpg')
                     os.makedirs(os.path.dirname(cropped_face_path), exist_ok=True)
                     cv2.imwrite(cropped_face_path, cropped_face)

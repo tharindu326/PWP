@@ -22,7 +22,9 @@ class Classifier:
                       f' start generating embeddings for existing faces')
                 self.get_all_embeddings()
         else:
-            self.encodings = joblib.load(cfg.recognizer.embedding_file_path)
+            data = joblib.load(cfg.recognizer.embedding_file_path)
+            self.encodings = data['encodings']
+            self.names = data['labels']
             print(f'Loaded Embeddings: {np.asarray(self.encodings).shape} and labels: {len(self.names)} belongs to : '
                   f'{np.unique(np.asarray(self.names))} unique peoples')
 

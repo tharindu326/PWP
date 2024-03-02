@@ -13,7 +13,6 @@ import numpy as np
 import cv2
 from face_engine.detector import Inference
 from face_engine.classifier import Classifier
-from flask_sqlalchemy import SQLAlchemy
 
 
 inference = Inference()
@@ -48,7 +47,7 @@ def register_person():
         for user_permission in permissions_list:
             if user_permission.lower() not in cfg.permission.user_permission_levels:
                 return jsonify({'error': f'Invalid permission level: {user_permission.lower()}. Use valid permission levels: '
-                                         f'{cfg.permission.user_permission_level}'}), 400
+                                         f'{cfg.permission.user_permission_levels}'}), 400
     user_id = None
     for i, file in enumerate(files):
         if file and allowed_file(file.filename):
@@ -106,13 +105,16 @@ def handle_access_request():
         return jsonify({'error': 'No image part in the request'}), 400
 
     file = request.files['image']
-    if file.filename == '' or not allowed_file(file.filename):
-        return jsonify({'error': 'No selected image file or file type not allowed'}), 400
-
+    if file.filename == '':
+        return jsonify({'error': 'No selected image file'}), 400
+    if not allowed_file(file.filename):
+        return jsonify({'error': f'file type: {file.filename.split(".")[-1]} not allowed'}), 400
     associated_permission = request.form.get('associated_permission')
     if not associated_permission:
         return jsonify({'error': 'Associated permission is required'}), 400
-
+    if associated_permission.lower() not in cfg.permission.user_permission_levels:
+        return jsonify({'error': f'Invalid permission level: {associated_permission.lower()}. Use valid permission levels: '
+                                 f'{cfg.permission.user_permission_levels}'}), 400
     if file and allowed_file(file.filename):
         blobData = file.read()
         try:
@@ -123,7 +125,9 @@ def handle_access_request():
                 cropped_face = frame_out[y: y + h, x: x + w]
                 face_encode = classifier.reco.encode(cropped_face)
                 user_id = classifier.clf.predict([face_encode])[0]
-                probability = classifier.clf.predict_proba([face_encode])[0]
+                probability = classifier.clf.predict_proba([face_encode])[0][int(user_id)-1]
+                print(f'Recognized user: {user_id} | probability: {probability} | required minimal permission: '
+                      f'{associated_permission} | prob_threshold: {cfg.recognizer.threshold}')
                 if not probability > cfg.recognizer.threshold:
                     return jsonify(
                         {'error': f'user not recognized. Access denied'}), 401

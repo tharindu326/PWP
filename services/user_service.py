@@ -8,6 +8,10 @@ def add_user(name, facial_data):
     return new_user.id
 
 
+def get_users_by_name(user_name):
+    return UserProfile.query.filter_by(name=user_name).all()
+
+
 def get_user_profile(user_id):
     return UserProfile.query.get(user_id)
 

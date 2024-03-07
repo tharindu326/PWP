@@ -8,11 +8,14 @@ from config import cfg
 from services.access_log_service import add_access_log, add_access_log, db
 from services.access_request_service import get_access_requests, log_access_request
 from services.permission_service import add_permission_to_user, get_user_permissions, validate_access_for_user, revoke_user_permissions
-from services.user_service import delete_user_profile, get_user_profile, update_user_facial_data, add_user
+from services.user_service import delete_user_profile, get_user_profile, update_user_facial_data, add_user, get_users_by_name
 import numpy as np
 import cv2
 from face_engine.detector import Inference
 from face_engine.classifier import Classifier
+from werkzeug.routing import BaseConverter, ValidationError
+from werkzeug.exceptions import NotFound
+import re
 
 
 inference = Inference()
@@ -29,11 +32,40 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in cfg.app.allowed_extensions
 
 
+def not_string(string):
+    return bool(re.search(r'[^a-zA-Z\s]', string))
+
+
+def format_name(name):
+    name_parts = name.split()
+    capitalized_name_parts = [part.capitalize() for part in name_parts]
+    capitalized_name = ' '.join(capitalized_name_parts)
+
+    return capitalized_name
+
+
+class NameConverter(BaseConverter):
+    def to_python(self, user_name):
+        if '/' in user_name or '?' in user_name:
+            raise ValidationError
+        if not_string(user_name):
+            return jsonify({'error': 'Numbers and special characters are not allowed in name'}), 400
+        user_name = format_name(user_name)
+        return user_name
+
+    def to_url(self, user_name):
+        return user_name
+
+
 @app.route('/register', methods=['POST'])
 def register_person():
     name = request.form.get('name')
     if not name:
         return jsonify({'error': 'Name is required'}), 400
+    if not_string(name):
+        return jsonify({'error': 'Numbers and special characters are not allowed in name'}), 400
+    else:
+        name = format_name(name)
     if 'image' not in request.files:
         return jsonify({'error': 'No image part in the request'}), 400
     files = request.files.getlist('image')
@@ -85,18 +117,19 @@ def register_person():
     return jsonify({'message': f'User {name} registered successfully with ID {user_id}'}), 201
 
 
-@app.route('/user/<int:user_id>/profile', methods=['GET'])
+@app.route('/users/<int:user_id>/profile', methods=['GET'])
 def get_profile(user_id):
     user_profile = get_user_profile(user_id)
     if not user_profile:
         return jsonify({'error': 'User not found'}), 404
-    user_permissions = get_user_permissions(user_id)
-    permission_list = [user_permission.permission_level for user_permission in user_permissions]
-
-    return jsonify({
-        'name': user_profile.name,
-        'permissions': permission_list
-    })
+    # user_permissions = get_user_permissions(user_id)
+    # permission_list = [user_permission.permission_level for user_permission in user_permissions]
+    #
+    # return jsonify({
+    #     'name': user_profile.name,
+    #     'permissions': permission_list
+    # })
+    return jsonify(user_profile.to_dict())
 
 
 @app.route('/access-request', methods=['POST'])
@@ -147,6 +180,17 @@ def handle_access_request():
             return jsonify({'error': f'An error occurred: {str(e)}'}), 500
     else:
         return jsonify({'error': f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg'}), 400
+
+
+app.url_map.converters['name'] = NameConverter
+
+
+@app.route('/users/<name:user_name>', methods=['GET'])
+def get_users(user_name):
+    users = get_users_by_name(user_name)
+    if not users:
+        return jsonify({'error': 'No users in that name'}), 404
+    return jsonify([user.to_dict() for user in users])
 
 
 if __name__ == '__main__':

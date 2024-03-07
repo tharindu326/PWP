@@ -11,12 +11,26 @@ class UserProfile(db.Model):
     access_permissions = db.relationship('AccessPermission', backref='user_profile', lazy=True)
     access_requests = db.relationship('AccessRequest', backref='user_profile', lazy=True)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'access_permissions': [access_permission.to_dict() for access_permission in self.access_permissions],
+        }
+
 
 class AccessPermission(db.Model):
     __tablename__ = 'access_permissions'
     id = db.Column(db.Integer, primary_key=True)
     user_profile_id = db.Column(db.Integer, db.ForeignKey('user_profiles.id'))
     permission_level = db.Column(db.String(50))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_profile_id': self.user_profile_id,
+            'permission_level': self.permission_level
+        }
 
 
 class AccessRequest(db.Model):

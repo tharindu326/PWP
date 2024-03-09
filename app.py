@@ -1,7 +1,6 @@
 import sys
 import os
 import time
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from flask import Flask, request, jsonify, make_response
 from config import cfg
@@ -14,10 +13,9 @@ import cv2
 from face_engine.detector import Inference
 from face_engine.classifier import Classifier
 from werkzeug.routing import BaseConverter, ValidationError
-from werkzeug.exceptions import NotFound
 import re
 from flask_caching import Cache
-
+from functools import wraps
 
 inference = Inference()
 classifier = Classifier()
@@ -32,6 +30,20 @@ app.config['CACHE_DEFAULT_TIMEOUT'] = 0
 cache = Cache(app)
 db.init_app(app)
 os.makedirs(app.config['CACHE_DIR'], exist_ok=True)
+
+VALID_API_KEYS = cfg.app.VALID_API_KEYS
+
+
+def require_api_key(function):
+    @wraps(function)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get('Authorization')
+        if not api_key:
+            return jsonify({"error": "API Key is missing"}), 400
+        elif api_key not in VALID_API_KEYS:
+            return jsonify({"error": "Invalid API Key."}), 401
+        return function(*args, **kwargs)
+    return decorated_function
 
 
 def allowed_file(filename):
@@ -67,7 +79,8 @@ class NameConverter(BaseConverter):
         return user_name
 
 
-@app.route('/register', methods=['POST'])
+@app.route('/identities/register', methods=['POST'])
+@require_api_key
 def register_person():
     name = request.form.get('name')
     if not name:
@@ -127,13 +140,14 @@ def register_person():
     return jsonify({'message': f'User {name} registered successfully with ID {user_id}'}), 201
 
 
-@app.route('/users/<int:user_id>/profile', methods=['GET'])
+@app.route('/identities/<int:user_id>/profile', methods=['GET'])
+@require_api_key
 def get_profile(user_id):
     cache_key = f"user_profile_{user_id}"
     cached_response = cache.get(cache_key)
     if cached_response:
         response = make_response(cached_response)
-        response.headers['X-Cache'] = 'HIT'
+        response.headers['Cache'] = 'HIT'
     else:
         user_profile = get_user_profile(user_id)
         if not user_profile:
@@ -147,12 +161,13 @@ def get_profile(user_id):
         # })
         response_data = jsonify(user_profile.to_dict())
         response = make_response(response_data)
-        response.headers['X-Cache'] = 'MISS'
+        response.headers['Cache'] = 'MISS'
         cache.set(cache_key, response_data)
     return response
 
 
-@app.route('/access-request', methods=['POST'])
+@app.route('/identities/access-request', methods=['POST'])
+@require_api_key
 def handle_access_request():
     if 'image' not in request.files:
         return jsonify({'error': 'No image part in the request'}), 400
@@ -205,7 +220,8 @@ def handle_access_request():
 app.url_map.converters['name'] = NameConverter
 
 
-@app.route('/users/<name:user_name>', methods=['GET'])
+@app.route('/identities/<name:user_name>', methods=['GET'])
+@require_api_key
 @cache.cached(key_prefix=query_key)
 def get_users(user_name):
     users = get_users_by_name(user_name)

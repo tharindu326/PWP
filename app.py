@@ -3,7 +3,7 @@ import os
 import time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from config import cfg
 from services.access_log_service import add_access_log, add_access_log, db
 from services.access_request_service import get_access_requests, log_access_request
@@ -16,6 +16,7 @@ from face_engine.classifier import Classifier
 from werkzeug.routing import BaseConverter, ValidationError
 from werkzeug.exceptions import NotFound
 import re
+from flask_caching import Cache
 
 
 inference = Inference()
@@ -25,7 +26,12 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = cfg.db.SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = cfg.db.SQLALCHEMY_TRACK_MODIFICATIONS
 app.config['UPLOAD_FOLDER'] = cfg.db.database
+app.config['CACHE_TYPE'] = 'FileSystemCache'  # Use file-based caching
+app.config['CACHE_DIR'] = 'cache_data'        # Directory for storing cache data
+app.config['CACHE_DEFAULT_TIMEOUT'] = 0
+cache = Cache(app)
 db.init_app(app)
+os.makedirs(app.config['CACHE_DIR'], exist_ok=True)
 
 
 def allowed_file(filename):
@@ -42,6 +48,10 @@ def format_name(name):
     capitalized_name = ' '.join(capitalized_name_parts)
 
     return capitalized_name
+
+
+def query_key(*args, **kwargs):
+    return request.full_path
 
 
 class NameConverter(BaseConverter):
@@ -119,17 +129,27 @@ def register_person():
 
 @app.route('/users/<int:user_id>/profile', methods=['GET'])
 def get_profile(user_id):
-    user_profile = get_user_profile(user_id)
-    if not user_profile:
-        return jsonify({'error': 'User not found'}), 404
-    # user_permissions = get_user_permissions(user_id)
-    # permission_list = [user_permission.permission_level for user_permission in user_permissions]
-    #
-    # return jsonify({
-    #     'name': user_profile.name,
-    #     'permissions': permission_list
-    # })
-    return jsonify(user_profile.to_dict())
+    cache_key = f"user_profile_{user_id}"
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        response = make_response(cached_response)
+        response.headers['X-Cache'] = 'HIT'
+    else:
+        user_profile = get_user_profile(user_id)
+        if not user_profile:
+            return jsonify({'error': 'User not found'}), 404
+        # user_permissions = get_user_permissions(user_id)
+        # permission_list = [user_permission.permission_level for user_permission in user_permissions]
+        #
+        # return jsonify({
+        #     'name': user_profile.name,
+        #     'permissions': permission_list
+        # })
+        response_data = jsonify(user_profile.to_dict())
+        response = make_response(response_data)
+        response.headers['X-Cache'] = 'MISS'
+        cache.set(cache_key, response_data)
+    return response
 
 
 @app.route('/access-request', methods=['POST'])
@@ -186,6 +206,7 @@ app.url_map.converters['name'] = NameConverter
 
 
 @app.route('/users/<name:user_name>', methods=['GET'])
+@cache.cached(key_prefix=query_key)
 def get_users(user_name):
     users = get_users_by_name(user_name)
     if not users:

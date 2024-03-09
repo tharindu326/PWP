@@ -3,6 +3,7 @@ __pycache__/
 logs/
 database/
 instance/
+cache_data/
 temp/
 test_images/
 face_engine/model_data/

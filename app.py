@@ -24,8 +24,8 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = cfg.db.SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = cfg.db.SQLALCHEMY_TRACK_MODIFICATIONS
 app.config['UPLOAD_FOLDER'] = cfg.db.database
-app.config['CACHE_TYPE'] = 'FileSystemCache'  # Use file-based caching
-app.config['CACHE_DIR'] = 'cache_data'        # Directory for storing cache data
+app.config['CACHE_TYPE'] = 'FileSystemCache'
+app.config['CACHE_DIR'] = 'cache_data'
 app.config['CACHE_DEFAULT_TIMEOUT'] = 0
 cache = Cache(app)
 db.init_app(app)

@@ -7,7 +7,7 @@ from config import cfg
 from services.access_log_service import add_access_log, add_access_log, db
 from services.access_request_service import get_access_requests, log_access_request
 from services.permission_service import add_permission_to_user, get_user_permissions, validate_access_for_user, revoke_user_permissions
-from services.user_service import delete_user_profile, get_user_profile, update_user_facial_data, add_user, get_users_by_name
+from services.user_service import delete_user_profile, get_user_profile, update_user_facial_data, add_user, get_users_by_name, update_user_name
 import numpy as np
 import cv2
 from face_engine.detector import Inference
@@ -89,46 +89,54 @@ def register_person():
         return jsonify({'error': 'Numbers and special characters are not allowed in name'}), 400
     else:
         name = format_name(name)
+
     if 'image' not in request.files:
         return jsonify({'error': 'No image part in the request'}), 400
+
     files = request.files.getlist('image')
     if not files or any(file.filename == '' for file in files):
         return jsonify({'error': 'No image file/files provided'}), 400
+    else:
+        for file in files:
+            if not file or not allowed_file(file.filename):
+                return jsonify(
+                    {'error': f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg'}), 400
 
     permissions_list = request.form.getlist('permission')
+
     if not permissions_list:
         return jsonify({'error': 'please provide associated permission levels for the user'}), 400
     else:
-        for user_permission in permissions_list:
-            if user_permission.lower() not in cfg.permission.user_permission_levels:
-                return jsonify({'error': f'Invalid permission level: {user_permission.lower()}. Use valid permission levels: '
-                                         f'{cfg.permission.user_permission_levels}'}), 400
+        if not isinstance(permissions_list, list):
+            return jsonify({'error': 'permissions needed to be a list'}), 400
+        else:
+            for user_permission in permissions_list:
+                if user_permission.lower() not in cfg.permission.user_permission_levels:
+                    return jsonify({'error': f'Invalid permission level: {user_permission.lower()}. Use valid permission levels: '
+                                             f'{cfg.permission.user_permission_levels}'}), 400
     user_id = None
     for i, file in enumerate(files):
-        if file and allowed_file(file.filename):
-            blobData = file.read()
-            try:
-                img = cv2.imdecode(np.frombuffer(blobData, np.uint8), cv2.IMREAD_COLOR)
-                frame_out, boxes, _, _ = inference.infer(img)
-                for idx, box in enumerate(boxes):
-                    x, y, w, h = [int(item) for item in box]
-                    cropped_face = frame_out[y: y + h, x: x + w]
-                    if user_id is None:
-                        os.makedirs('temp/', exist_ok=True)
-                        temp_im = f'temp/{time.monotonic()}.jpg'
-                        cv2.imwrite(temp_im, cropped_face)
-                        with open(temp_im, 'rb') as f:
-                            Bim = f.read()
-                            user_id = add_user(name, Bim)
-                        os.remove(temp_im)
-                    cropped_face_path = os.path.join(app.config['UPLOAD_FOLDER'], str(user_id), f'face_{i}_{idx}.jpg')
-                    os.makedirs(os.path.dirname(cropped_face_path), exist_ok=True)
-                    cv2.imwrite(cropped_face_path, cropped_face)
-            except Exception as e:
-                db.session.rollback()
-                return jsonify({'error': f'An error occurred: {str(e)}'}), 500
-        else:
-            return jsonify({'error': f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg'}), 400
+        blobData = file.read()
+        try:
+            img = cv2.imdecode(np.frombuffer(blobData, np.uint8), cv2.IMREAD_COLOR)
+            frame_out, boxes, _, _ = inference.infer(img)
+            for idx, box in enumerate(boxes):
+                x, y, w, h = [int(item) for item in box]
+                cropped_face = frame_out[y: y + h, x: x + w]
+                if user_id is None:
+                    os.makedirs('temp/', exist_ok=True)
+                    temp_im = f'temp/{time.monotonic()}.jpg'
+                    cv2.imwrite(temp_im, cropped_face)
+                    with open(temp_im, 'rb') as f:
+                        Bim = f.read()
+                        user_id = add_user(name, Bim)
+                    os.remove(temp_im)
+                cropped_face_path = os.path.join(app.config['UPLOAD_FOLDER'], str(user_id), f'face_{i}_{idx}.jpg')
+                os.makedirs(os.path.dirname(cropped_face_path), exist_ok=True)
+                cv2.imwrite(cropped_face_path, cropped_face)
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
     # add permissions
     for user_permission in permissions_list:
@@ -164,6 +172,85 @@ def get_profile(user_id):
         response.headers['Cache'] = 'MISS'
         cache.set(cache_key, response_data)
     return response
+
+
+@app.route('/identities/<int:user_id>/update', methods=['PUT'])
+@require_api_key
+def update_user(user_id):
+    is_name = False
+    is_permission = False
+    name = request.form.get('name')
+    if name:
+        if not_string(name):
+            return jsonify({'error': 'Numbers and special characters are not allowed in name'}), 400
+        else:
+            name = format_name(name)
+            is_name = True
+
+    permissions_list = request.form.getlist('permission')
+
+    if permissions_list:
+        if not isinstance(permissions_list, list):
+            return jsonify({'error': 'permissions needed to be a list'}), 400
+        else:
+            for user_permission in permissions_list:
+                if user_permission.lower() not in cfg.permission.user_permission_levels:
+                    return jsonify(
+                        {'error': f'Invalid permission level: {user_permission.lower()}. Use valid permission levels: '
+                                  f'{cfg.permission.user_permission_levels}'}), 400
+            is_permission = True
+
+    if 'image' in request.files:
+        files = request.files.getlist('image')
+        if not any(file.filename == '' for file in files):
+            for file in files:
+                if not allowed_file(file.filename):
+                    return jsonify(
+                        {'error': f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg'}), 400
+        else:
+            return jsonify({'error': 'No image file/files provided'}), 400
+
+        user = get_user_profile(user_id)
+        if not user:
+            return jsonify({f'error': f'User: {user_id} not found'}), 404
+
+        # update permissions
+        # revoke_user_permissions(user_id)  # this will revoke all since no specific permission provided
+        if is_permission:
+            for user_permission in permissions_list:
+                add_permission_to_user(user_id, user_permission.lower())
+
+        if is_name:
+            _ = update_user_name(user_id, name)
+
+        update_user_blob = False
+        user_folder = os.path.join(app.config['UPLOAD_FOLDER'], str(user_id))
+        for i, file in enumerate(files):
+            blobData = file.read()
+            if not update_user_blob:
+                update_user_facial_data(user_id, blobData)
+                update_user_blob = True
+            try:
+                img = cv2.imdecode(np.frombuffer(blobData, np.uint8), cv2.IMREAD_COLOR)
+                frame_out, boxes, _, _ = inference.infer(img)
+                for idx, box in enumerate(boxes):
+                    x, y, w, h = [int(item) for item in box]
+                    cropped_face = frame_out[y: y + h, x: x + w]
+                    cropped_face_path = os.path.join(user_folder,
+                                                     f'face_{i + len(os.listdir(user_folder)) + 1}_{idx}.jpg')
+                    os.makedirs(os.path.dirname(cropped_face_path), exist_ok=True)
+                    cv2.imwrite(cropped_face_path, cropped_face)
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+        # Clear cache for the updated user profile
+        cache.delete(f"user_profile_{user_id}")
+        return jsonify({'message': f'User:{user_id} updated successfully'}), 200
+
+    else:
+        if not is_name and not is_permission:
+            return jsonify({'error': f'No data for user:{user_id} to updated'}), 200
 
 
 @app.route('/identities/access-request', methods=['POST'])

@@ -34,6 +34,15 @@ def delete_user_profile(user_id):
     return False
 
 
+def update_user_name(user_id, new_name):
+    user = UserProfile.query.get(user_id)
+    if user:
+        user.name = new_name
+        db.session.commit()
+        return True
+    return False
+
+
 if __name__ == "__main__":
     add_user("Tharindu", b"sample_facial_data")
     # Fetch and print user profile

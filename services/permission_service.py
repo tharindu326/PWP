@@ -2,9 +2,12 @@ from database_models import AccessPermission, db
 
 
 def add_permission_to_user(user_id, permission_level):
-    new_permission = AccessPermission(user_profile_id=user_id, permission_level=permission_level)
-    db.session.add(new_permission)
-    db.session.commit()
+    existing_permission = AccessPermission.query.filter_by(user_profile_id=user_id,
+                                                           permission_level=permission_level).first()
+    if not existing_permission:
+        new_permission = AccessPermission(user_profile_id=user_id, permission_level=permission_level)
+        db.session.add(new_permission)
+        db.session.commit()
 
 
 def get_user_permissions(user_id):

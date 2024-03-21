@@ -17,6 +17,7 @@ import re
 from flask_caching import Cache
 from functools import wraps
 from flasgger import Swagger, swag_from
+from database_models import db
 
 inference = Inference()
 classifier = Classifier()
@@ -86,6 +87,13 @@ class NameConverter(BaseConverter):
 
     def to_url(self, user_name):
         return user_name
+
+def create_app():
+    app = Flask(__name__)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///yourdatabase.db'
+    db.init_app(app)
+    # Additional configuration and blueprint registration
+    return app
 
 
 @app.route('/identities/register', methods=['POST'])

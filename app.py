@@ -2,7 +2,7 @@ import sys
 import os
 import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify, make_response, render_template
 from config import cfg
 from services.access_log_service import add_access_log, add_access_log, db
 from services.access_request_service import get_access_requests, log_access_request
@@ -16,6 +16,7 @@ from werkzeug.routing import BaseConverter, ValidationError
 import re
 from flask_caching import Cache
 from functools import wraps
+from flasgger import Swagger, swag_from
 
 inference = Inference()
 classifier = Classifier()
@@ -27,6 +28,14 @@ app.config['UPLOAD_FOLDER'] = cfg.db.database
 app.config['CACHE_TYPE'] = 'FileSystemCache'
 app.config['CACHE_DIR'] = 'cache_data'
 app.config['CACHE_DEFAULT_TIMEOUT'] = 0
+app.config["SWAGGER"] = {
+    "title": "Access Control API",
+    "openapi": "3.0.3",
+    "uiversion": 3,
+    "specs_route": "/apidocs/"
+}
+swagger = Swagger(app)
+
 cache = Cache(app)
 db.init_app(app)
 os.makedirs(app.config['CACHE_DIR'], exist_ok=True)
@@ -82,6 +91,57 @@ class NameConverter(BaseConverter):
 @app.route('/identities/register', methods=['POST'])
 @require_api_key
 def register_person():
+    """
+    Register a new identity with their facial data and permissions
+    ---
+    tags:
+      - Registration
+    security:
+      - ApiKeyAuth: []
+    parameters:
+      - in: header
+        name: Authorization
+        type: string
+        required: true
+        description: API key needed to authorize requests
+      - in: formData
+        name: name
+        type: string
+        required: true
+        description: The name of the person to register
+      - in: formData
+        name: image
+        type: file
+        required: true
+        description: The facial image file for the person
+      - in: formData
+        name: permission
+        type: array
+        items:
+          type: string
+        required: true
+        description: A list of permissions to be associated with the person
+    responses:
+      201:
+        description: User registered successfully
+        content:
+          application/json:
+            example:
+              message: User John Doe registered successfully with ID 1
+      400:
+        description: Bad request due to invalid input or missing data
+        content:
+          application/json:
+            example:
+              error: Name is required
+              
+      500:
+        description: Server error
+        content:
+          application/json:
+            example:
+              error: An error occurred {error}'
+    """
     name = request.form.get('name')
     if not name:
         return jsonify({'error': 'Name is required'}), 400
@@ -151,6 +211,43 @@ def register_person():
 @app.route('/identities/<int:user_id>/profile', methods=['GET'])
 @require_api_key
 def get_profile(user_id):
+    """
+    Retrieve the profile of an identity by the user ID
+    ---
+    tags:
+      - Profile
+    security:
+      - ApiKeyAuth: []
+    parameters:
+      - in: header
+        name: Authorization
+        type: string
+        required: true
+        description: API key needed to authorize requests
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: The user ID of the person whose profile is to be retrieved
+    responses:
+      200:
+        description: Profile retrieved successfully
+        content:
+          application/json:
+            example:
+              - id: 1
+                name: John Doe 1
+                access_permissions: ["employee", "manager"]
+              - id: 2
+                name: Jane Doe 2
+                access_permissions: ["admin"]
+      404:
+        description: User not found
+        content:
+          application/json:
+            example:
+              error: User not found
+    """
     cache_key = f"user_profile_{user_id}"
     cached_response = cache.get(cache_key)
     if cached_response:
@@ -177,6 +274,68 @@ def get_profile(user_id):
 @app.route('/identities/<int:user_id>/update', methods=['PUT'])
 @require_api_key
 def update_user(user_id):
+    """
+    Update the details (name, permissions, facial data) of an existing user
+    ---
+    tags:
+      - Update
+    security:
+      - ApiKeyAuth: []
+    parameters:
+      - in: header
+        name: Authorization
+        type: string
+        required: true
+        description: API key needed to authorize requests
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: The ID of the user to update
+      - in: formData
+        name: name
+        type: string
+        required: false
+        description: The new name of the user
+      - in: formData
+        name: permission
+        type: array
+        items:
+          type: string
+        required: false
+        description: New permissions for the user
+      - in: formData
+        name: image
+        type: file
+        required: false
+        description: New facial image for the user
+    responses:
+      200:
+        description: User updated successfully
+        content:
+          application/json:
+            example:
+              message: User 1 updated successfully
+      400:
+        description: Bad request due to invalid input
+        content:
+          application/json:
+            example:
+              error: Invalid permission level
+      404:
+        description: User not found
+        content:
+          application/json:
+            example:
+              error: User not found
+              
+      500:
+        description: Server error
+        content:
+          application/json:
+            example:
+              error: An error occurred {error}'
+    """
     is_name = False
     is_permission = False
     name = request.form.get('name')
@@ -256,6 +415,56 @@ def update_user(user_id):
 @app.route('/identities/access-request', methods=['POST'])
 @require_api_key
 def handle_access_request():
+    """
+    Handle an access request using facial recognition to grant or deny access
+    ---
+    tags:
+      - Access Request
+    security:
+      - ApiKeyAuth: []
+    parameters:
+      - in: header
+        name: Authorization
+        type: string
+        required: true
+        description: API key needed to authorize requests
+      - in: formData
+        name: image
+        type: file
+        required: true
+        description: The facial image for access request
+      - in: formData
+        name: associated_permission
+        type: string
+        required: true
+        description: The permission level required for access
+    responses:
+      201:
+        description: Access granted
+        content:
+          application/json:
+            example:
+              message: user 1 access granted successfully
+      403:
+        description: Access denied due to insufficient permissions
+        content:
+          application/json:
+            example:
+              message: user 1 does not have permission. Access declined
+      400:
+        description: Bad request due to invalid input or missing data
+        content:
+          application/json:
+            example:
+              error: Associated permission is required
+              error: File type {typr} is not allowed. Allowed types are png, jpg, jpeg
+      500:
+        description: Server error or no face detected in the image
+        content:
+          application/json:
+            example:
+              error: No face detected from the image
+    """
     if 'image' not in request.files:
         return jsonify({'error': 'No image part in the request'}), 400
 
@@ -311,10 +520,54 @@ app.url_map.converters['name'] = NameConverter
 @require_api_key
 @cache.cached(key_prefix=query_key)
 def get_users(user_name):
+    """
+    Retrieve users by their name
+    ---
+    tags:
+      - Users
+    security:
+      - ApiKeyAuth: []
+    parameters:
+      - in: header
+        name: Authorization
+        type: string
+        required: true
+        description: API key needed to authorize requests
+      - in: path
+        name: user_name
+        type: string
+        required: true
+        description: The name of the users to retrieve
+    responses:
+      200:
+        description: Users retrieved successfully
+        content:
+          application/json:
+            example:
+              - id: 1
+                name: John Doe1
+                access_permissions: ["employee", "manager"]
+              - id: 2
+                name: Jane Doe2
+                access_permissions: ["admin"]
+                
+      404:
+        description: No users found with the given name
+        content:
+          application/json:
+            example:
+              error: No users in that name
+    """
     users = get_users_by_name(user_name)
     if not users:
         return jsonify({'error': 'No users in that name'}), 404
     return jsonify([user.to_dict() for user in users])
+
+
+@app.route('/tos')
+def terms_of_service():
+    # template taken from https://www.gnu.org/licenses/gpl-3.0.en.html
+    return render_template('tos.html')
 
 
 if __name__ == '__main__':

@@ -1,13 +1,15 @@
 import sys
 import os
-import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import time
 from flask import Flask, request, jsonify, make_response, render_template
 from config import cfg
-from services.access_log_service import add_access_log, db
-from services.access_request_service import get_access_requests, log_access_request
-from services.permission_service import add_permission_to_user, get_user_permissions, validate_access_for_user, revoke_user_permissions
-from services.user_service import delete_user_profile, get_user_profile, update_user_facial_data, add_user, get_users_by_name, update_user_name
+from services.access_log_service import add_access_log, get_user_access_logs
+from services.access_request_service import log_access_request
+from services.permission_service import add_permission_to_user, validate_access_for_user
+from services.user_service import delete_user_profile, get_user_profile, update_user_facial_data, add_user, \
+    get_users_by_name, update_user_name
 import numpy as np
 import cv2
 from face_engine.detector import Inference
@@ -16,7 +18,7 @@ from werkzeug.routing import BaseConverter, ValidationError
 import re
 from flask_caching import Cache
 from functools import wraps
-from flasgger import Swagger, swag_from
+from flasgger import Swagger
 from database_models import db
 
 inference = Inference()
@@ -88,13 +90,6 @@ class NameConverter(BaseConverter):
     def to_url(self, user_name):
         return user_name
 
-def create_app():
-    app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///yourdatabase.db'
-    db.init_app(app)
-    # Additional configuration and blueprint registration
-    return app
-
 
 @app.route('/identities/register', methods=['POST'])
 @require_api_key
@@ -142,7 +137,7 @@ def register_person():
           application/json:
             example:
               error: Name is required
-              
+
       500:
         description: Server error
         content:
@@ -157,12 +152,6 @@ def register_person():
         return jsonify({'error': 'Numbers and special characters are not allowed in name'}), 400
     else:
         name = format_name(name)
-
-    standardized_name = name.lower().strip()
-    existing_users = get_users_by_name(name)
-
-    if any(user.name.lower().strip() == standardized_name for user in existing_users):
-        return jsonify({'error': 'A user with this name already exists'}), 400
 
     if 'image' not in request.files:
         return jsonify({'error': 'No image part in the request'}), 400
@@ -342,7 +331,7 @@ def update_user(user_id):
           application/json:
             example:
               error: User not found
-              
+
       500:
         description: Server error
         content:
@@ -352,6 +341,8 @@ def update_user(user_id):
     """
     is_name = False
     is_permission = False
+    is_file = False
+    files = []
     name = request.form.get('name')
     if name:
         if not_string(name):
@@ -359,11 +350,6 @@ def update_user(user_id):
         else:
             name = format_name(name)
             is_name = True
-
-    # Check for duplicate name
-    existing_users = get_users_by_name(name)
-    if existing_users:
-        return jsonify({'error': 'A user with this name already exists'}), 400
 
     permissions_list = request.form.getlist('permission')
 
@@ -387,55 +373,41 @@ def update_user(user_id):
                         {'error': f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg'}), 400
         else:
             return jsonify({'error': 'No image file/files provided'}), 400
+        user = get_user_profile(user_id)
+        if not user:
+            return jsonify({f'error': f'User: {user_id} not found'}), 404
+        is_file = True
 
-        try:
-            user = get_user_profile(user_id)
-            if not user:
-                return jsonify({f'error': f'User: {user_id} not found'}), 404
+    # update permissions
+    # revoke_user_permissions(user_id)  # this will revoke all since no specific permission provided
+    if is_permission:
+        for user_permission in permissions_list:
+            add_permission_to_user(user_id, user_permission.lower())
 
-            name = request.form.get('name')
-            if name:
-                standardized_name = format_name(name).lower().strip()
-                # Exclude the current user from the duplicate check
-                existing_users = [u for u in get_users_by_name(standardized_name) if u.id != user_id]
-                if existing_users:
-                    return jsonify({'error': 'A user with this name already exists'}), 400
-                user.name = name  # Assuming direct assignment for simplicity
+    if is_name:
+        _ = update_user_name(user_id, name)
 
-            # update permissions
-            # revoke_user_permissions(user_id)  # this will revoke all since no specific permission provided
-            if is_permission:
-                for user_permission in permissions_list:
-                    add_permission_to_user(user_id, user_permission.lower())
-
-            if is_name:
-                _ = update_user_name(user_id, name)
-
-            update_user_blob = False
-            user_folder = os.path.join(app.config['UPLOAD_FOLDER'], str(user_id))
-            for i, file in enumerate(files):
-                blobData = file.read()
-                if not update_user_blob:
-                    update_user_facial_data(user_id, blobData)
-                    update_user_blob = True
-                try:
-                    img = cv2.imdecode(np.frombuffer(blobData, np.uint8), cv2.IMREAD_COLOR)
-                    frame_out, boxes, _, _ = inference.infer(img)
-                    for idx, box in enumerate(boxes):
-                        x, y, w, h = [int(item) for item in box]
-                        cropped_face = frame_out[y: y + h, x: x + w]
-                        cropped_face_path = os.path.join(user_folder,
-                                                        f'face_{i + len(os.listdir(user_folder)) + 1}_{idx}.jpg')
-                        os.makedirs(os.path.dirname(cropped_face_path), exist_ok=True)
-                        cv2.imwrite(cropped_face_path, cropped_face)
-                except Exception as e:
-                    db.session.rollback()
-                    return jsonify({'error': f'An error occurred: {str(e)}'}), 500
-            db.session.commit()  # Make sure to commit changes
-            return jsonify({'message': 'User details updated successfully'}), 200
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'error': f'Failed to update user: {str(e)}'}), 500
+    if is_file:
+        update_user_blob = False
+        user_folder = os.path.join(app.config['UPLOAD_FOLDER'], str(user_id))
+        for i, file in enumerate(files):
+            blobData = file.read()
+            if not update_user_blob:
+                update_user_facial_data(user_id, blobData)
+                update_user_blob = True
+            try:
+                img = cv2.imdecode(np.frombuffer(blobData, np.uint8), cv2.IMREAD_COLOR)
+                frame_out, boxes, _, _ = inference.infer(img)
+                for idx, box in enumerate(boxes):
+                    x, y, w, h = [int(item) for item in box]
+                    cropped_face = frame_out[y: y + h, x: x + w]
+                    cropped_face_path = os.path.join(user_folder,
+                                                     f'face_{i + len(os.listdir(user_folder)) + 1}_{idx}.jpg')
+                    os.makedirs(os.path.dirname(cropped_face_path), exist_ok=True)
+                    cv2.imwrite(cropped_face_path, cropped_face)
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
         # Clear cache for the updated user profile
         cache.delete(f"user_profile_{user_id}")
@@ -523,7 +495,7 @@ def handle_access_request():
                 cropped_face = frame_out[y: y + h, x: x + w]
                 face_encode = classifier.reco.encode(cropped_face)
                 user_id = classifier.clf.predict([face_encode])[0]
-                probability = classifier.clf.predict_proba([face_encode])[0][int(user_id)-1]
+                probability = classifier.clf.predict_proba([face_encode])[0][int(user_id) - 1]
                 print(f'Recognized user: {user_id} | probability: {probability} | required minimal permission: '
                       f'{associated_permission} | prob_threshold: {cfg.recognizer.threshold}')
                 if not probability > cfg.recognizer.threshold:
@@ -574,17 +546,30 @@ def get_users(user_name):
         description: The name of the users to retrieve
     responses:
       200:
-        description: Users retrieved successfully
-        content:
-          application/json:
-            example:
-              - id: 1
-                name: John Doe1
-                access_permissions: ["employee", "manager"]
-              - id: 2
-                name: Jane Doe2
-                access_permissions: ["admin"]
-                
+        description: A user with their associated access permissions.
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+              description: The unique identifier for the user.
+            name:
+              type: string
+              description: The name of the user.
+            access_permissions:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: The unique identifier for the access permission.
+                  permission_level:
+                    type: string
+                    description: The level of access granted by this permission (e.g., supervisor, employee, admin, security).
+                  user_profile_id:
+                    type: integer
+                    description: The unique identifier of the user profile associated with this access permission.
       404:
         description: No users found with the given name
         content:
@@ -597,15 +582,17 @@ def get_users(user_name):
         return jsonify({'error': 'No users in that name'}), 404
     return jsonify([user.to_dict() for user in users])
 
+
 @app.route('/identities/<int:user_id>/delete', methods=['DELETE'])
 @require_api_key
-@swag_from('docs/delete_identity.yml')
 def delete_identity(user_id):
     """
     Delete a user's profile and associated data.
     ---
     tags:
       - Users
+    security:
+      - ApiKeyAuth: []
     parameters:
       - in: path
         name: user_id
@@ -616,12 +603,11 @@ def delete_identity(user_id):
         name: Authorization
         type: string
         required: true
-        description: API key needed to authorize the delete request.
+        description: API key needed to authorize requests
     responses:
       200:
         description: User deleted successfully.
         schema:
-          id: deleteSuccess
           properties:
             message:
               type: string
@@ -629,75 +615,68 @@ def delete_identity(user_id):
       404:
         description: User not found.
         schema:
-          id: userNotFound
           properties:
             error:
               type: string
               example: User not found.
-      500:
-        description: Failed to delete the user.
-        schema:
-          id: deleteFailure
-          properties:
-            error:
-              type: string
-              example: Failed to delete the user.
     """
-    # Check if the user exists before attempting to delete
     user = get_user_profile(user_id)
     if user is None:
         return jsonify({"error": "User not found"}), 404
 
-    # Delete the user profile using the service function
     if delete_user_profile(user_id):
         return jsonify({"message": f"User {user_id} deleted successfully"}), 200
-    else:
-        # In case there's some unexpected issue with deletion
-        return jsonify({"error": "Failed to delete the user"}), 500
+
 
 @app.route('/access-log/<int:user_id>', methods=['GET'])
 @require_api_key
 def get_access_logs(user_id):
     """
-    Retrieve access logs for a specific identity.
+    Get access logs for a user
     ---
     tags:
-      - Access Log
+      - Access Logs
     security:
       - ApiKeyAuth: []
+
     parameters:
-      - in: path
-        name: user_id
+      - name: user_id
+        in: path
         type: integer
         required: true
-        description: The user ID of the identity whose access logs are to be retrieved.
+        description: The unique identifier for the user whose access logs are being retrieved.
     responses:
       200:
-        description: Access logs retrieved successfully.
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/AccessLog'
+        description: An array of access logs for the user.
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              access_request_id:
+                type: integer
+                description: The unique identifier of the access request.
+              details:
+                type: string
+                description: Additional details about the access request, if any.
+              id:
+                type: integer
+                description: The unique identifier of the access log entry.
       404:
-        description: User not found.
-        content:
-          application/json:
-            example:
-              error: User not found.
+        description: Error message indicating the user was not found.
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              description: Error message.
     """
-    try:
-        user = get_user_profile(user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
+    user = get_user_profile(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
 
-        access_logs = get_access_logs_by_user_id(user_id)
-        return jsonify(access_logs), 200
-    except Exception as e:
-        # Log the exception for debugging purposes
-        print(f"Error retrieving access logs for user {user_id}: {e}")
-        return jsonify({'error': 'An error occurred while retrieving access logs'}), 500
+    access_logs = get_user_access_logs(user_id)
+    return jsonify([access_log.to_dict() for access_log in access_logs]), 200
 
 
 @app.route('/tos')

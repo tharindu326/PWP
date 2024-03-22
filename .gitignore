@@ -1,6 +1,7 @@
 __pycache__/
 .idea/
 logs/
+.coverage
 database/
 instance/
 cache_data/
@@ -10,3 +11,6 @@ face_engine/model_data/
 test.py
 *.jpg
 *.png
+*.jpeg
+*.yaml
+*.json

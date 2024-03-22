@@ -4,7 +4,7 @@ import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from flask import Flask, request, jsonify, make_response, render_template
 from config import cfg
-from services.access_log_service import add_access_log, add_access_log, db
+from services.access_log_service import add_access_log, db
 from services.access_request_service import get_access_requests, log_access_request
 from services.permission_service import add_permission_to_user, get_user_permissions, validate_access_for_user, revoke_user_permissions
 from services.user_service import delete_user_profile, get_user_profile, update_user_facial_data, add_user, get_users_by_name, update_user_name
@@ -157,6 +157,12 @@ def register_person():
         return jsonify({'error': 'Numbers and special characters are not allowed in name'}), 400
     else:
         name = format_name(name)
+
+    standardized_name = name.lower().strip()
+    existing_users = get_users_by_name(name)
+
+    if any(user.name.lower().strip() == standardized_name for user in existing_users):
+        return jsonify({'error': 'A user with this name already exists'}), 400
 
     if 'image' not in request.files:
         return jsonify({'error': 'No image part in the request'}), 400
@@ -354,6 +360,11 @@ def update_user(user_id):
             name = format_name(name)
             is_name = True
 
+    # Check for duplicate name
+    existing_users = get_users_by_name(name)
+    if existing_users:
+        return jsonify({'error': 'A user with this name already exists'}), 400
+
     permissions_list = request.form.getlist('permission')
 
     if permissions_list:
@@ -377,39 +388,54 @@ def update_user(user_id):
         else:
             return jsonify({'error': 'No image file/files provided'}), 400
 
-        user = get_user_profile(user_id)
-        if not user:
-            return jsonify({f'error': f'User: {user_id} not found'}), 404
+        try:
+            user = get_user_profile(user_id)
+            if not user:
+                return jsonify({f'error': f'User: {user_id} not found'}), 404
 
-        # update permissions
-        # revoke_user_permissions(user_id)  # this will revoke all since no specific permission provided
-        if is_permission:
-            for user_permission in permissions_list:
-                add_permission_to_user(user_id, user_permission.lower())
+            name = request.form.get('name')
+            if name:
+                standardized_name = format_name(name).lower().strip()
+                # Exclude the current user from the duplicate check
+                existing_users = [u for u in get_users_by_name(standardized_name) if u.id != user_id]
+                if existing_users:
+                    return jsonify({'error': 'A user with this name already exists'}), 400
+                user.name = name  # Assuming direct assignment for simplicity
 
-        if is_name:
-            _ = update_user_name(user_id, name)
+            # update permissions
+            # revoke_user_permissions(user_id)  # this will revoke all since no specific permission provided
+            if is_permission:
+                for user_permission in permissions_list:
+                    add_permission_to_user(user_id, user_permission.lower())
 
-        update_user_blob = False
-        user_folder = os.path.join(app.config['UPLOAD_FOLDER'], str(user_id))
-        for i, file in enumerate(files):
-            blobData = file.read()
-            if not update_user_blob:
-                update_user_facial_data(user_id, blobData)
-                update_user_blob = True
-            try:
-                img = cv2.imdecode(np.frombuffer(blobData, np.uint8), cv2.IMREAD_COLOR)
-                frame_out, boxes, _, _ = inference.infer(img)
-                for idx, box in enumerate(boxes):
-                    x, y, w, h = [int(item) for item in box]
-                    cropped_face = frame_out[y: y + h, x: x + w]
-                    cropped_face_path = os.path.join(user_folder,
-                                                     f'face_{i + len(os.listdir(user_folder)) + 1}_{idx}.jpg')
-                    os.makedirs(os.path.dirname(cropped_face_path), exist_ok=True)
-                    cv2.imwrite(cropped_face_path, cropped_face)
-            except Exception as e:
-                db.session.rollback()
-                return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+            if is_name:
+                _ = update_user_name(user_id, name)
+
+            update_user_blob = False
+            user_folder = os.path.join(app.config['UPLOAD_FOLDER'], str(user_id))
+            for i, file in enumerate(files):
+                blobData = file.read()
+                if not update_user_blob:
+                    update_user_facial_data(user_id, blobData)
+                    update_user_blob = True
+                try:
+                    img = cv2.imdecode(np.frombuffer(blobData, np.uint8), cv2.IMREAD_COLOR)
+                    frame_out, boxes, _, _ = inference.infer(img)
+                    for idx, box in enumerate(boxes):
+                        x, y, w, h = [int(item) for item in box]
+                        cropped_face = frame_out[y: y + h, x: x + w]
+                        cropped_face_path = os.path.join(user_folder,
+                                                        f'face_{i + len(os.listdir(user_folder)) + 1}_{idx}.jpg')
+                        os.makedirs(os.path.dirname(cropped_face_path), exist_ok=True)
+                        cv2.imwrite(cropped_face_path, cropped_face)
+                except Exception as e:
+                    db.session.rollback()
+                    return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+            db.session.commit()  # Make sure to commit changes
+            return jsonify({'message': 'User details updated successfully'}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': f'Failed to update user: {str(e)}'}), 500
 
         # Clear cache for the updated user profile
         cache.delete(f"user_profile_{user_id}")

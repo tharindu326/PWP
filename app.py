@@ -655,6 +655,50 @@ def delete_identity(user_id):
         # In case there's some unexpected issue with deletion
         return jsonify({"error": "Failed to delete the user"}), 500
 
+@app.route('/access-log/<int:user_id>', methods=['GET'])
+@require_api_key
+def get_access_logs(user_id):
+    """
+    Retrieve access logs for a specific identity.
+    ---
+    tags:
+      - Access Log
+    security:
+      - ApiKeyAuth: []
+    parameters:
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: The user ID of the identity whose access logs are to be retrieved.
+    responses:
+      200:
+        description: Access logs retrieved successfully.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/AccessLog'
+      404:
+        description: User not found.
+        content:
+          application/json:
+            example:
+              error: User not found.
+    """
+    try:
+        user = get_user_profile(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        access_logs = get_access_logs_by_user_id(user_id)
+        return jsonify(access_logs), 200
+    except Exception as e:
+        # Log the exception for debugging purposes
+        print(f"Error retrieving access logs for user {user_id}: {e}")
+        return jsonify({'error': 'An error occurred while retrieving access logs'}), 500
+
 
 @app.route('/tos')
 def terms_of_service():

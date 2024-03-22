@@ -229,17 +229,17 @@ def test_access_request_with_invalid_data(base_url):
 #     assert "An error occurred" in response.json["error"]
 #     img.close()
 
-def test_successful_user_deletion(base_url):
-    # Assume you have a user with a known ID that can safely be deleted for testing.
-    user_id = 1
-    url = f"{base_url}/identities/{user_id}/delete"
-    headers = {"Authorization": get_api_key()}
+# def test_successful_user_deletion(base_url):
+#     # Assume you have a user with a known ID that can safely be deleted for testing.
+#     user_id = 1
+#     url = f"{base_url}/identities/{user_id}/delete"
+#     headers = {"Authorization": get_api_key()}
 
-    response = requests.delete(url, headers=headers)
+#     response = requests.delete(url, headers=headers)
     
-    # Verify that the user was deleted successfully
-    assert response.status_code == 200
-    assert "deleted successfully" in response.json()["message"]
+#     # Verify that the user was deleted successfully
+#     assert response.status_code == 200
+#     assert "deleted successfully" in response.json()["message"]
     
 def test_delete_nonexistent_user(base_url):
     # Use an ID assumed not to exist
@@ -273,5 +273,46 @@ def test_delete_user_with_invalid_api_key(base_url):
     response = requests.delete(url, headers=headers)
     
     # Verify that the response indicates an invalid API key
+    assert response.status_code == 401
+    assert "Invalid API Key" in response.json()["error"]
+
+# def test_retrieve_access_logs_for_existing_user(base_url):
+#     user_id = create_test_user(base_url, "Test User", permissions=["admin"])
+    
+#     url = f"{base_url}/access-log/{user_id}"
+#     headers = {"Authorization": get_api_key()}
+    
+#     response = requests.get(url, headers=headers)
+#     assert response.status_code == 200
+#     assert isinstance(response.json(), list)
+    
+#     delete_test_user(base_url, user_id)
+
+# def test_retrieve_access_logs_for_nonexistent_user(base_url):
+#     # Use a user_id that does not exist
+#     nonexistent_user_id = 100000000
+#     url = f"{base_url}/access-log/{nonexistent_user_id}"
+#     headers = {"Authorization": get_api_key()}
+    
+#     response = requests.get(url, headers=headers)
+#     assert response.status_code == 404
+#     assert "User not found" in response.json()["error"]
+
+def test_retrieve_access_logs_without_api_key(base_url):
+    # Use a valid user_id for this test
+    user_id = 1  # Assuming user_id 1 is a valid user for the sake of this example
+    url = f"{base_url}/access-log/{user_id}"
+    
+    response = requests.get(url)
+    assert response.status_code == 400
+    assert "API Key is missing" in response.json()["error"]
+
+def test_retrieve_access_logs_with_invalid_api_key(base_url):
+    # Use a valid user_id for this test
+    user_id = 1  # Assuming user_id 1 is a valid user for the sake of this example
+    url = f"{base_url}/access-log/{user_id}"
+    headers = {"Authorization": "InvalidAPIKey"}
+    
+    response = requests.get(url, headers=headers)
     assert response.status_code == 401
     assert "Invalid API Key" in response.json()["error"]

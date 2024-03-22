@@ -228,3 +228,50 @@ def test_access_request_with_invalid_data(base_url):
 #     assert response.status_code == 500
 #     assert "An error occurred" in response.json["error"]
 #     img.close()
+
+def test_successful_user_deletion(base_url):
+    # Assume you have a user with a known ID that can safely be deleted for testing.
+    user_id = 1
+    url = f"{base_url}/identities/{user_id}/delete"
+    headers = {"Authorization": get_api_key()}
+
+    response = requests.delete(url, headers=headers)
+    
+    # Verify that the user was deleted successfully
+    assert response.status_code == 200
+    assert "deleted successfully" in response.json()["message"]
+    
+def test_delete_nonexistent_user(base_url):
+    # Use an ID assumed not to exist
+    user_id = 1
+    url = f"{base_url}/identities/{user_id}/delete"
+    headers = {"Authorization": get_api_key()}
+    
+    response = requests.delete(url, headers=headers)
+    
+    # Verify that the appropriate error message is returned
+    assert response.status_code == 404
+    assert "User not found" in response.json()["error"]
+    
+def test_delete_user_without_api_key(base_url):
+    # Use a known user ID that can be attempted for deletion
+    user_id = 1
+    url = f"{base_url}/identities/{user_id}/delete"
+    
+    response = requests.delete(url)
+    
+    # Verify that the API key is required
+    assert response.status_code == 400
+    assert "API Key is missing" in response.json()["error"]
+    
+def test_delete_user_with_invalid_api_key(base_url):
+    # Use a known user ID that can be attempted for deletion
+    user_id = 1
+    url = f"{base_url}/identities/{user_id}/delete"
+    headers = {"Authorization": "InvalidAPIKey"}
+    
+    response = requests.delete(url, headers=headers)
+    
+    # Verify that the response indicates an invalid API key
+    assert response.status_code == 401
+    assert "Invalid API Key" in response.json()["error"]

@@ -597,6 +597,64 @@ def get_users(user_name):
         return jsonify({'error': 'No users in that name'}), 404
     return jsonify([user.to_dict() for user in users])
 
+@app.route('/identities/<int:user_id>/delete', methods=['DELETE'])
+@require_api_key
+@swag_from('docs/delete_identity.yml')
+def delete_identity(user_id):
+    """
+    Delete a user's profile and associated data.
+    ---
+    tags:
+      - Users
+    parameters:
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: The ID of the user to delete.
+      - in: header
+        name: Authorization
+        type: string
+        required: true
+        description: API key needed to authorize the delete request.
+    responses:
+      200:
+        description: User deleted successfully.
+        schema:
+          id: deleteSuccess
+          properties:
+            message:
+              type: string
+              example: User 1 deleted successfully.
+      404:
+        description: User not found.
+        schema:
+          id: userNotFound
+          properties:
+            error:
+              type: string
+              example: User not found.
+      500:
+        description: Failed to delete the user.
+        schema:
+          id: deleteFailure
+          properties:
+            error:
+              type: string
+              example: Failed to delete the user.
+    """
+    # Check if the user exists before attempting to delete
+    user = get_user_profile(user_id)
+    if user is None:
+        return jsonify({"error": "User not found"}), 404
+
+    # Delete the user profile using the service function
+    if delete_user_profile(user_id):
+        return jsonify({"message": f"User {user_id} deleted successfully"}), 200
+    else:
+        # In case there's some unexpected issue with deletion
+        return jsonify({"error": "Failed to delete the user"}), 500
+
 
 @app.route('/tos')
 def terms_of_service():

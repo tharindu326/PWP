@@ -1,0 +1,66 @@
+post:
+  summary: "Register a new identity"
+  description: "Registers a new identity with their facial data and permissions."
+  tags:
+    - Registration
+  security:
+    - ApiKeyAuth: []
+  parameters:
+    - in: header
+      name: Authorization
+      type: string
+      required: true
+      description: "API key needed to authorize requests."
+    - in: formData
+      name: name
+      type: string
+      required: true
+      description: "The name of the person to register."
+    - in: formData
+      name: image
+      type: file
+      required: true
+      description: "The facial image file for the person."
+    - in: formData
+      name: permission
+      type: array
+      items:
+        type: string
+      required: true
+      description: "A list of permissions to be associated with the person."
+
+responses:
+  201:
+    description: "User registered successfully."
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "User John Doe registered successfully with ID 1."
+  400:
+    description: "Bad request due to invalid input or missing data."
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example1: "Name is required."
+              example2: "No image part in the request."
+              example3: "No image file/files provided."
+              example4: "Invalid permission level: XXX. Use valid permission levels: ['superadmin', 'admin', 'manager', ..]."
+              example5: "File type: pdf is not allowed. Allowed types are: png, jpg, jpeg."
+  500:
+    description: "Server error."
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "An error occurred {error}."

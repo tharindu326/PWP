@@ -18,7 +18,7 @@ from werkzeug.routing import BaseConverter, ValidationError
 import re
 from flask_caching import Cache
 from functools import wraps
-from flasgger import Swagger
+from flasgger import Swagger, swag_from
 from database_models import db
 
 inference = Inference()
@@ -32,11 +32,25 @@ app.config['CACHE_TYPE'] = 'FileSystemCache'
 app.config['CACHE_DIR'] = 'cache_data'
 app.config['CACHE_DEFAULT_TIMEOUT'] = 0
 app.config["SWAGGER"] = {
-    "title": "Access Control API",
-    "openapi": "3.0.3",
-    "uiversion": 3,
-    "specs_route": "/apidocs/"
-}
+                            "openapi": "3.0.3",
+                            "uiversion": 3,
+                            "specs_route": "/apidocs/",
+                            "doc_dir": "docs/",
+                            'info': {
+                                    'title': 'FacePass',
+                                    'version': '1.0',
+                                    'description': 'Access management API',
+                                },
+                            'components': {
+                                    'securitySchemes': {
+                                        'ApiKeyAuth': {
+                                            'type': 'apiKey',
+                                            'in': 'header',
+                                            'name': 'Authorization'
+                                        }
+                                    }
+                                }
+                        }
 swagger = Swagger(app)
 
 cache = Cache(app)
@@ -93,58 +107,8 @@ class NameConverter(BaseConverter):
 
 @app.route('/identities/register', methods=['POST'])
 @require_api_key
+@swag_from("docs/register.yaml")
 def register_person():
-    """
-    Register a new identity with their facial data and permissions
-    ---
-    tags:
-      - Registration
-    security:
-      - ApiKeyAuth: []
-    parameters:
-      - in: header
-        name: Authorization
-        type: string
-        required: true
-        description: API key needed to authorize requests
-      - in: formData
-        name: name
-        type: string
-        required: true
-        description: The name of the person to register
-      - in: formData
-        name: image
-        type: file
-        required: true
-        description: The facial image file for the person
-      - in: formData
-        name: permission
-        type: array
-        items:
-          type: string
-        required: true
-        description: A list of permissions to be associated with the person
-    responses:
-      201:
-        description: User registered successfully
-        content:
-          application/json:
-            example:
-              message: User John Doe registered successfully with ID 1
-      400:
-        description: Bad request due to invalid input or missing data
-        content:
-          application/json:
-            example:
-              error: Name is required
-
-      500:
-        description: Server error
-        content:
-          application/json:
-            example:
-              error: An error occurred {error}'
-    """
     name = request.form.get('name')
     if not name:
         return jsonify({'error': 'Name is required'}), 400
@@ -213,44 +177,8 @@ def register_person():
 
 @app.route('/identities/<int:user_id>/profile', methods=['GET'])
 @require_api_key
+@swag_from("docs/get_by_id.yaml")
 def get_profile(user_id):
-    """
-    Retrieve the profile of an identity by the user ID
-    ---
-    tags:
-      - Profile
-    security:
-      - ApiKeyAuth: []
-    parameters:
-      - in: header
-        name: Authorization
-        type: string
-        required: true
-        description: API key needed to authorize requests
-      - in: path
-        name: user_id
-        type: integer
-        required: true
-        description: The user ID of the person whose profile is to be retrieved
-    responses:
-      200:
-        description: Profile retrieved successfully
-        content:
-          application/json:
-            example:
-              - id: 1
-                name: John Doe 1
-                access_permissions: ["employee", "manager"]
-              - id: 2
-                name: Jane Doe 2
-                access_permissions: ["admin"]
-      404:
-        description: User not found
-        content:
-          application/json:
-            example:
-              error: User not found
-    """
     cache_key = f"user_profile_{user_id}"
     cached_response = cache.get(cache_key)
     if cached_response:
@@ -271,74 +199,13 @@ def get_profile(user_id):
         response = make_response(response_data)
         response.headers['Cache'] = 'MISS'
         cache.set(cache_key, response_data)
-    return response
+    return response, 200
 
 
 @app.route('/identities/<int:user_id>/update', methods=['PUT'])
 @require_api_key
+@swag_from("docs/update.yaml")
 def update_user(user_id):
-    """
-    Update the details (name, permissions, facial data) of an existing user
-    ---
-    tags:
-      - Update
-    security:
-      - ApiKeyAuth: []
-    parameters:
-      - in: header
-        name: Authorization
-        type: string
-        required: true
-        description: API key needed to authorize requests
-      - in: path
-        name: user_id
-        type: integer
-        required: true
-        description: The ID of the user to update
-      - in: formData
-        name: name
-        type: string
-        required: false
-        description: The new name of the user
-      - in: formData
-        name: permission
-        type: array
-        items:
-          type: string
-        required: false
-        description: New permissions for the user
-      - in: formData
-        name: image
-        type: file
-        required: false
-        description: New facial image for the user
-    responses:
-      200:
-        description: User updated successfully
-        content:
-          application/json:
-            example:
-              message: User 1 updated successfully
-      400:
-        description: Bad request due to invalid input
-        content:
-          application/json:
-            example:
-              error: Invalid permission level
-      404:
-        description: User not found
-        content:
-          application/json:
-            example:
-              error: User not found
-
-      500:
-        description: Server error
-        content:
-          application/json:
-            example:
-              error: An error occurred {error}'
-    """
     is_name = False
     is_permission = False
     is_file = False
@@ -415,62 +282,13 @@ def update_user(user_id):
 
     else:
         if not is_name and not is_permission:
-            return jsonify({'error': f'No data for user:{user_id} to updated'}), 200
+            return jsonify({'error': f'No data for user:{user_id} to updated'}), 404
 
 
 @app.route('/identities/access-request', methods=['POST'])
 @require_api_key
+@swag_from("docs/access_request.yaml")
 def handle_access_request():
-    """
-    Handle an access request using facial recognition to grant or deny access
-    ---
-    tags:
-      - Access Request
-    security:
-      - ApiKeyAuth: []
-    parameters:
-      - in: header
-        name: Authorization
-        type: string
-        required: true
-        description: API key needed to authorize requests
-      - in: formData
-        name: image
-        type: file
-        required: true
-        description: The facial image for access request
-      - in: formData
-        name: associated_permission
-        type: string
-        required: true
-        description: The permission level required for access
-    responses:
-      201:
-        description: Access granted
-        content:
-          application/json:
-            example:
-              message: user 1 access granted successfully
-      403:
-        description: Access denied due to insufficient permissions
-        content:
-          application/json:
-            example:
-              message: user 1 does not have permission. Access declined
-      400:
-        description: Bad request due to invalid input or missing data
-        content:
-          application/json:
-            example:
-              error: Associated permission is required
-              error: File type {typr} is not allowed. Allowed types are png, jpg, jpeg
-      500:
-        description: Server error or no face detected in the image
-        content:
-          application/json:
-            example:
-              error: No face detected from the image
-    """
     if 'image' not in request.files:
         return jsonify({'error': 'No image part in the request'}), 400
 
@@ -522,61 +340,11 @@ def handle_access_request():
 app.url_map.converters['name'] = NameConverter
 
 
-@app.route('/identities/<name:user_name>', methods=['GET'])
+@app.route('/identities/<name:user_name>/profile', methods=['GET'])
 @require_api_key
 @cache.cached(key_prefix=query_key)
+@swag_from("docs/get_by_name.yaml")
 def get_users(user_name):
-    """
-    Retrieve users by their name
-    ---
-    tags:
-      - Users
-    security:
-      - ApiKeyAuth: []
-    parameters:
-      - in: header
-        name: Authorization
-        type: string
-        required: true
-        description: API key needed to authorize requests
-      - in: path
-        name: user_name
-        type: string
-        required: true
-        description: The name of the users to retrieve
-    responses:
-      200:
-        description: A user with their associated access permissions.
-        schema:
-          type: object
-          properties:
-            id:
-              type: integer
-              description: The unique identifier for the user.
-            name:
-              type: string
-              description: The name of the user.
-            access_permissions:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                    description: The unique identifier for the access permission.
-                  permission_level:
-                    type: string
-                    description: The level of access granted by this permission (e.g., supervisor, employee, admin, security).
-                  user_profile_id:
-                    type: integer
-                    description: The unique identifier of the user profile associated with this access permission.
-      404:
-        description: No users found with the given name
-        content:
-          application/json:
-            example:
-              error: No users in that name
-    """
     users = get_users_by_name(user_name)
     if not users:
         return jsonify({'error': 'No users in that name'}), 404
@@ -585,41 +353,8 @@ def get_users(user_name):
 
 @app.route('/identities/<int:user_id>/delete', methods=['DELETE'])
 @require_api_key
+@swag_from("docs/delete.yaml")
 def delete_identity(user_id):
-    """
-    Delete a user's profile and associated data.
-    ---
-    tags:
-      - Users
-    security:
-      - ApiKeyAuth: []
-    parameters:
-      - in: path
-        name: user_id
-        type: integer
-        required: true
-        description: The ID of the user to delete.
-      - in: header
-        name: Authorization
-        type: string
-        required: true
-        description: API key needed to authorize requests
-    responses:
-      200:
-        description: User deleted successfully.
-        schema:
-          properties:
-            message:
-              type: string
-              example: User 1 deleted successfully.
-      404:
-        description: User not found.
-        schema:
-          properties:
-            error:
-              type: string
-              example: User not found.
-    """
     user = get_user_profile(user_id)
     if user is None:
         return jsonify({"error": "User not found"}), 404
@@ -630,47 +365,8 @@ def delete_identity(user_id):
 
 @app.route('/access-log/<int:user_id>', methods=['GET'])
 @require_api_key
+@swag_from("docs/get_access_logs.yaml")
 def get_access_logs(user_id):
-    """
-    Get access logs for a user
-    ---
-    tags:
-      - Access Logs
-    security:
-      - ApiKeyAuth: []
-
-    parameters:
-      - name: user_id
-        in: path
-        type: integer
-        required: true
-        description: The unique identifier for the user whose access logs are being retrieved.
-    responses:
-      200:
-        description: An array of access logs for the user.
-        schema:
-          type: array
-          items:
-            type: object
-            properties:
-              access_request_id:
-                type: integer
-                description: The unique identifier of the access request.
-              details:
-                type: string
-                description: Additional details about the access request, if any.
-              id:
-                type: integer
-                description: The unique identifier of the access log entry.
-      404:
-        description: Error message indicating the user was not found.
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-              description: Error message.
-    """
     user = get_user_profile(user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404

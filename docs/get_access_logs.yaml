@@ -1,0 +1,42 @@
+get:
+  summary: "Get access logs for a user"
+  description: "Retrieves access logs for a specified user, detailing each access request made."
+  tags:
+    - Access Logs
+  security:
+    - ApiKeyAuth: []
+  parameters:
+    - name: user_id
+      in: path
+      type: integer
+      required: true
+      description: "The unique identifier for the user whose access logs are being retrieved."
+responses:
+  '200':
+    description: "An array of access logs for the user."
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              access_request_id:
+                type: integer
+                description: "The unique identifier of the access request."
+              details:
+                type: string
+                description: "Additional details about the access request, if any."
+              id:
+                type: integer
+                description: "The unique identifier of the access log entry."
+  '404':
+    description: "Error message indicating the user was not found."
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              description: "User not found."

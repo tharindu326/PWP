@@ -1,0 +1,82 @@
+post:
+  summary: "Handle an access request"
+  description: "Handle an access request using facial recognition to grant or deny access."
+  tags:
+    - Access Request
+  security:
+    - ApiKeyAuth: []
+  parameters:
+    - in: header
+      name: Authorization
+      type: string
+      required: true
+      description: "API key needed to authorize requests."
+    - in: formData
+      name: image
+      type: file
+      required: true
+      description: "The facial image for access request."
+    - in: formData
+      name: associated_permission
+      type: string
+      required: true
+      description: "The permission level required for access."
+responses:
+  '201':
+    description: "Access granted."
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "user 1 access granted successfully."
+  '403':
+    description: "Access denied due to insufficient permissions."
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "user 1 does not have permission. Access declined."
+  '400':
+    description: "Bad request due to invalid input or missing data."
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example1: "Associated permission is required."
+              example2: "No image part in the request."
+              example3: "No selected image file."
+              example4: "Invalid permission level: XXX. Use valid permission levels: ['superadmin', 'admin', 'manager', ..]."
+              example5: "File type: pdf is not allowed. Allowed types are: png, jpg, jpeg."
+  '401':
+    description: "Unauthorized user access."
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "user not recognized. Access denied."
+  '500':
+    description: "Server error or no face detected in the image."
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              examples:
+                NoFaceDetected:
+                  value: "No face detected from the image."
+                ServerError:
+                  value: "An error occurred."

@@ -1,0 +1,56 @@
+get:
+  summary: "Retrieve users by their name"
+  description: "Retrieve users by their name, along with their associated access permissions."
+  tags:
+    - Users
+  security:
+    - ApiKeyAuth: []
+  parameters:
+    - in: header
+      name: Authorization
+      type: string
+      required: true
+      description: "API key needed to authorize requests."
+    - in: path
+      name: user_name
+      type: string
+      required: true
+      description: "The name of the users to retrieve."
+responses:
+  '200':
+    description: "A user with their associated access permissions."
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+              description: "The unique identifier for the user."
+            name:
+              type: string
+              description: "The name of the user."
+            access_permissions:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: "The unique identifier for the access permission."
+                  permission_level:
+                    type: string
+                    description: "The level of access granted by this permission (e.g., supervisor, employee, admin, security)."
+                  user_profile_id:
+                    type: integer
+                    description: "The unique identifier of the user profile associated with this access permission."
+  '404':
+    description: "No users found with the given name."
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "No users found with that name."

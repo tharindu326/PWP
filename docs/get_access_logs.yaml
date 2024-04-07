@@ -1,3 +1,5 @@
+Retrieves access logs for a specified user, detailing each access request made
+---
 get:
   summary: "Get access logs for a user"
   description: "Retrieves access logs for a specified user, detailing each access request made."

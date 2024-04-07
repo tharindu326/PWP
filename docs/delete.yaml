@@ -1,3 +1,5 @@
+Deletes a user's profile and all associated data from the system
+---
 delete:
   summary: "Delete a user's profile and associated data."
   description: "Deletes a user's profile and all associated data from the system."

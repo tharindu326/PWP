@@ -1,3 +1,5 @@
+Updates the details (name, permissions, facial data) of an existing user
+---
 put:
   summary: "Update the details of an existing user"
   description: "Updates the details (name, permissions, facial data) of an existing user."

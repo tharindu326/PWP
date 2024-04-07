@@ -1,3 +1,5 @@
+Handle an access request using facial recognition to grant or deny access.
+---
 post:
   summary: "Handle an access request"
   description: "Handle an access request using facial recognition to grant or deny access."

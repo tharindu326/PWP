@@ -1,3 +1,5 @@
+Retrieve users by their name, along with their associated access permissions
+---
 get:
   summary: "Retrieve users by their name"
   description: "Retrieve users by their name, along with their associated access permissions."

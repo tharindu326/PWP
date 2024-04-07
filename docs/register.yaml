@@ -1,3 +1,5 @@
+Registers a new identity with their facial data and permissions.
+---
 post:
   summary: "Register a new identity"
   description: "Registers a new identity with their facial data and permissions."

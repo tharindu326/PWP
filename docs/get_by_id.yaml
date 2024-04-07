@@ -1,3 +1,5 @@
+Retrieves the profile of an identity by the user ID
+---
 get:
   summary: "Retrieve the profile of an identity"
   description: "Retrieves the profile of an identity by the user ID."

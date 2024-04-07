@@ -1,0 +1,73 @@
+<!-- link_relations.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FacePass Identity Link Relations</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        h1 {
+            color: #333;
+        }
+        .relation {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+        .relation:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>FacePass Identity Link Relations</h1>
+    <p>This document outlines the link relations used within the FacePass identities endpoints.</p>
+
+    <div class="relation">
+        <h2>FacePassIdentities:register</h2>
+        <p>Registers a new identity with their facial data and permissions.</p>
+        <code>POST /identities/register</code>
+    </div>
+
+    <div class="relation">
+        <h2>FacePassIdentities:get-by-name</h2>
+        <p>Retrieve users by their name, along with their associated access permissions.</p>
+        <code>GET /identities/{user_name}/profile</code>
+    </div>
+
+    <div class="relation">
+        <h2>FacePassIdentities:get-by-id</h2>
+        <p>Retrieves the profile of the identity by the ID.</p>
+        <code>GET /identities/{user_id}/profile</code>
+    </div>
+
+    <div class="relation">
+        <h2>FacePassIdentities:access-request</h2>
+        <p>Handle an access request using facial recognition to grant or deny access.</p>
+        <code>POST /identities/access-request</code>
+    </div>
+
+    <div class="relation">
+        <h2>FacePassIdentities:edit</h2>
+        <p>Updates the details (name, permissions, facial data) of an existing user.</p>
+        <code>PUT /identities/{user_id}/update</code>
+    </div>
+
+    <div class="relation">
+        <h2>FacePassIdentities:delete</h2>
+        <p>Deletes user's profile and all associated data from the system.</p>
+        <code>DELETE /identities/{user_id}/delete</code>
+    </div>
+
+    <div class="relation">
+        <h2>FacePassIdentities:access-log</h2>
+        <p>Retrieves access logs for a specified user.</p>
+        <code>GET /access-log/{user_id}</code>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,410 @@
+openapi: 3.0.3
+info:
+  title: FacePass
+  description: Access management API
+  version: '1.0'
+
+servers:
+  - url: http://{host}:{port}
+    description: Development server
+    variables:
+      host:
+        default: 127.0.0.1
+        description: host ip for the local development server
+      port:
+        default: "8080"
+        description: port number for the local development server
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+  responses:
+    ServerError:
+      description: Server Error.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: An error occurred {error}.
+    UserNotFound:
+      description: User not found.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                description: User {user_id} not found.
+
+    ProfileRetrieved:
+      description: A user profile  with their associated access permissions.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: The unique identifier for the user.
+              name:
+                type: string
+                description: The name of the user.
+              access_permissions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: The unique identifier for the access permission.
+                    permission_level:
+                      type: string
+                      description: The level of access granted by this permission (e.g., supervisor, employee, admin, security).
+                    user_profile_id:
+                      type: integer
+                      description: The unique identifier of the user profile associated with this access permission.
+
+paths:
+  /access-log/{user_id}:
+    get:
+      summary: Retrieves access logs for a specified user, detailing each access request made.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          description: The unique identifier for the user whose access logs are being retrieved.
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: An array of access logs for the user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: The unique identifier of the access log entry.
+                    access_request_id:
+                      type: integer
+                      description: The unique identifier of the access request.
+                    details:
+                      type: string
+                      description: Additional details about the access request, if any.
+        '404':
+          $ref: '#/components/responses/UserNotFound'
+  /identities/access-request:
+    post:
+      summary: Handle an access request using facial recognition to grant or deny access.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: The facial image for access request.
+                associated_permission:
+                  type: string
+                  description: The permission level required for access.
+              required:
+                - image
+                - associated_permission
+      responses:
+        '201':
+          description: Access granted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: user 1 access granted successfully.
+        '400':
+          description: Bad request due to invalid input or missing data.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "Associated permission is required"
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "No image part in the request."
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "No selected image file"
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "Invalid permission level: XXX. Use valid permission levels: ['superadmin', 'admin', 'manager', ...]."
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "File type: pdf is not allowed. Allowed types are: png, jpg, jpeg."
+        '401':
+          description: Unauthorized user access.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: user not recognized. Access denied.
+        '403':
+          description: Access denied due to insufficient permissions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: user 1 does not have permission. Access declined.
+        '500':
+          description: Server error or no face detected in the image.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "No face detected from the image"
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "An error occurred"
+  /identities/register:
+    post:
+      summary: Registers a new identity with their facial data and permissions.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: The name of the person to register.
+                image:
+                  type: string
+                  format: binary
+                  description: The facial image file for the person.
+                permission:
+                  type: array
+                  items:
+                    type: string
+                  description: A list of permissions to be associated with the person.
+              required:
+                - name
+                - image
+                - permission
+      responses:
+        '201':
+          description: User registered successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User John Doe registered successfully with ID 1.
+        '400':
+          description: Bad request due to invalid input or missing data.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "Name is required."
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "No image part in the request."
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "No image file/files provided."
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "Invalid permission level: XXX. Use valid permission levels: ['superadmin', 'admin', 'manager', ...]."
+                - type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "File type: pdf is not allowed. Allowed types are: png, jpg, jpeg."
+
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /identities/{user_id}/delete:
+    delete:
+      summary: Deletes a user's profile and all associated data from the system.
+      parameters:
+        - name: user_id
+          in: path
+          description: The ID of the user to delete.
+          required: true
+          schema:
+            type: integer
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User 1 deleted successfully.
+        '404':
+          $ref: '#/components/responses/UserNotFound'
+
+  /identities/{user_id}/profile:
+    get:
+      summary: Retrieves the profile of an identity by the user ID.
+      parameters:
+        - name: user_id
+          in: path
+          description: The user ID of the person whose profile is to be retrieved.
+          required: true
+          schema:
+            type: integer
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/ProfileRetrieved'
+        '404':
+          $ref: '#/components/responses/UserNotFound'
+
+  /identities/{user_id}/update:
+    put:
+      summary: Updates the details (name, permissions, facial data) of an existing user.
+      parameters:
+        - name: user_id
+          in: path
+          description: The ID of the user to update.
+          required: true
+          schema:
+            type: integer
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: The new name of the user.
+                permission:
+                  type: array
+                  items:
+                    type: string
+                  description: New permissions for the user.
+                image:
+                  type: string
+                  format: binary
+                  description: New facial image for the user.
+      responses:
+        '200':
+          description: User updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User 1 updated successfully.
+        '400':
+          description: Bad request due to invalid input.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '404':
+          $ref: '#/components/responses/UserNotFound'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: An error occurred {error}.
+
+  /identities/{user_name}/profile:
+    get:
+      summary: Retrieve users by their name, along with their associated access permissions.
+      parameters:
+        - name: user_name
+          in: path
+          description: The name of the users to retrieve.
+          required: true
+          schema:
+            type: string
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/ProfileRetrieved'
+        '404':
+          description: No users found with the given name.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: No users found with that name.

@@ -1,5 +1,6 @@
 import sys
 import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import time
@@ -18,10 +19,11 @@ from werkzeug.routing import BaseConverter
 import re
 from flask_caching import Cache
 from functools import wraps
-from flasgger import Swagger, swag_from
+from flasgger import Swagger
 from database_models import db
 from mason import IdentityBuilder, create_error_response, MASON
 import json
+
 inference = Inference()
 classifier = Classifier()
 
@@ -32,27 +34,14 @@ app.config['UPLOAD_FOLDER'] = cfg.db.database
 app.config['CACHE_TYPE'] = 'FileSystemCache'
 app.config['CACHE_DIR'] = 'cache_data'
 app.config['CACHE_DEFAULT_TIMEOUT'] = 0
-app.config["SWAGGER"] = {
+
+app.config['SWAGGER'] = {
                             "openapi": "3.0.3",
                             "uiversion": 3,
                             "specs_route": "/apidocs/",
                             "doc_dir": "docs/",
-                            'info': {
-                                    'title': 'FacePass',
-                                    'version': '1.0',
-                                    'description': 'Access management API',
-                                },
-                            'components': {
-                                    'securitySchemes': {
-                                        'ApiKeyAuth': {
-                                            'type': 'apiKey',
-                                            'in': 'header',
-                                            'name': 'Authorization'
-                                        }
-                                    }
-                                }
                         }
-swagger = Swagger(app)
+swagger = Swagger(app, template_file='docs/FacePass.yaml')
 
 cache = Cache(app)
 db.init_app(app)
@@ -75,6 +64,7 @@ def require_api_key(function):
                                          message='Invalid API Key')
 
         return function(*args, **kwargs)
+
     return decorated_function
 
 
@@ -101,9 +91,11 @@ def query_key(*args, **kwargs):
 class NameConverter(BaseConverter):
     def to_python(self, user_name):
         if '/' in user_name or '?' in user_name:
-            return create_error_response(400, title="InvalidInputData", message='special characters (?, /) cannot be included in the input data')
+            return create_error_response(400, title="InvalidInputData",
+                                         message='special characters (?, /) cannot be included in the input data')
         if not_string(user_name):
-            return create_error_response(400, title="InvalidInputData", message='Numbers and special characters are not allowed in name')
+            return create_error_response(400, title="InvalidInputData",
+                                         message='Numbers and special characters are not allowed in name')
         user_name = format_name(user_name)
         return user_name
 
@@ -113,14 +105,14 @@ class NameConverter(BaseConverter):
 
 @app.route('/identities/register', methods=['POST'])
 @require_api_key
-@swag_from("docs/register.yaml")
 def register_person():
     name = request.form.get('name')
     if not name:
         return create_error_response(400, title="MissingData",
                                      message='Name is required')
     if not_string(name):
-        return create_error_response(400, title="InvalidInputData", message='numbers and special characters (?, /) cannot be included in the input data')
+        return create_error_response(400, title="InvalidInputData",
+                                     message='numbers and special characters (?, /) cannot be included in the input data')
     else:
         name = format_name(name)
 
@@ -198,7 +190,6 @@ def register_person():
 
 @app.route('/identities/<int:user_id>/profile', methods=['GET'])
 @require_api_key
-@swag_from("docs/get_by_id.yaml")
 def get_profile(user_id):
     cache_key = f"user_profile_{user_id}"
     cached_response = cache.get(cache_key)
@@ -231,7 +222,6 @@ def get_profile(user_id):
 
 @app.route('/identities/<int:user_id>/update', methods=['PUT'])
 @require_api_key
-@swag_from("docs/update.yaml")
 def update_user(user_id):
     is_name = False
     is_permission = False
@@ -322,7 +312,6 @@ def update_user(user_id):
 
 @app.route('/identities/access-request', methods=['POST'])
 @require_api_key
-@swag_from("docs/access_request.yaml")
 def handle_access_request():
     if 'image' not in request.files:
         create_error_response(400, title="MissingData", message='No image part in the request')
@@ -388,7 +377,6 @@ app.url_map.converters['name'] = NameConverter
 @app.route('/identities/<name:user_name>/profile', methods=['GET'])
 @require_api_key
 @cache.cached(key_prefix=query_key)
-@swag_from("docs/get_by_name.yaml")
 def get_users(user_name):
     users = get_users_by_name(user_name)
     if not users:
@@ -405,7 +393,6 @@ def get_users(user_name):
 
 @app.route('/identities/<int:user_id>/delete', methods=['DELETE'])
 @require_api_key
-@swag_from("docs/delete.yaml")
 def delete_identity(user_id):
     user = get_user_profile(user_id)
     if user is None:
@@ -422,7 +409,6 @@ def delete_identity(user_id):
 
 @app.route('/access-log/<int:user_id>', methods=['GET'])
 @require_api_key
-@swag_from("docs/get_access_logs.yaml")
 def get_access_logs(user_id):
     user = get_user_profile(user_id)
     if not user:

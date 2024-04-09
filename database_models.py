@@ -43,6 +43,15 @@ class AccessRequest(db.Model):
     associated_facial_data = db.Column(db.LargeBinary)
     access_logs = db.relationship('AccessLog', backref='access_request', lazy=True)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'timestamp': self.timestamp,
+            'outcome': self.outcome,
+            'associated_facial_data': self.associated_facial_data,
+            'associated_permission': self.associated_permission
+        }
+
 
 class AccessLog(db.Model):
     __tablename__ = 'access_logs'

@@ -46,9 +46,9 @@ class AccessRequest(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
-            'timestamp': self.timestamp,
+            'timestamp': str(self.timestamp),
             'outcome': self.outcome,
-            'associated_facial_data': self.associated_facial_data,
+            # 'associated_facial_data': self.associated_facial_data,
             'associated_permission': self.associated_permission
         }
 

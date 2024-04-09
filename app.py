@@ -414,7 +414,7 @@ def delete_identity(user_id):
         return Response(json.dumps(builder), status=200, mimetype=MASON)
 
 
-@app.route('/access-log/<int:user_id>', methods=['GET'], endpoint='access_log_by_user')
+@app.route('/identities/<int:user_id>/access-logs', methods=['GET'], endpoint='access_log_by_user')
 @require_api_key
 def get_access_logs_user(user_id):
     user = get_user_profile(user_id)
@@ -443,7 +443,7 @@ def get_requests(user_id):
     builder.add_control_access_by(user_id=user_id)
     builder.add_control_request_access()
     for request_ in requests:
-        builder.add_control_log(log_id=request_.access_logs.id)
+        builder.add_control_log(log_id=request_.access_logs[0].id)
     builder['message'] = [request_.to_dict() for request_ in requests]
     return Response(json.dumps(builder), status=200, mimetype=MASON)
 
@@ -480,7 +480,7 @@ def get_log(log_id):
     return Response(json.dumps(builder), status=200, mimetype=MASON)
 
 
-@app.route('/access-request/<int:access_request_id>', methods=['GET'], endpoint='access_log')
+@app.route('/access-request/<int:access_request_id>', methods=['GET'], endpoint='access_log_by_id')
 @require_api_key
 def get_access_logs(access_request_id):
     access_request = get_access_request(access_request_id)
@@ -491,7 +491,7 @@ def get_access_logs(access_request_id):
     builder.add_namespace("Identities", LINK_RELATIONS_URL)
     builder.add_control_access_by(user_id=access_request.user_profile_id)
     builder.add_control_request_access()
-    builder.add_control_log(access_request.access_logs.id)
+    builder.add_control_log(access_request.access_logs[0].id)
     builder['message'] = access_request.to_dict()
     return Response(json.dumps(builder), status=200, mimetype=MASON)
 

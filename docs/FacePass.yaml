@@ -72,7 +72,7 @@ components:
                       description: The unique identifier of the user profile associated with this access permission.
 
 paths:
-  /access-log/{user_id}:
+  /identities/{user_id}/access-logs:
     get:
       summary: Retrieves access logs for a specified user, detailing each access request made.
       security:
@@ -516,10 +516,6 @@ paths:
                   associated_permission:
                     type: string
                     description: minimum access level provided when calling the request
-                  associated_facial_data:
-                    type: string
-                    format: binary
-                    description: The facial image for access request.
         '404':
           description: Access request not found.
           content:

@@ -100,7 +100,7 @@ class IdentityBuilder(MasonBuilder):
     def add_control_access_logs(self, user_id):
         self.add_control(
             "FacePassIdentities:access-logs",
-            href=f"/access-log/{user_id}",
+            href=f"/identities/{user_id}/access-logs",
             method="GET",
             title="Retrieves access logs for a specified user"
         )

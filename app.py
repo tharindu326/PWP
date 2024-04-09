@@ -6,9 +6,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import time
 from flask import Flask, request, jsonify, render_template, Response
 from config import cfg
-from services.access_log_service import add_access_log, get_user_access_logs
-from services.access_request_service import log_access_request
-from services.permission_service import add_permission_to_user, validate_access_for_user
+from services.access_log_service import add_access_log, get_user_access_logs, get_access_log
+from services.access_request_service import log_access_request, get_user_access_requests, get_access_request
+from services.permission_service import add_permission_to_user, validate_access_for_user, get_user_permissions
 from services.user_service import delete_user_profile, get_user_profile, update_user_facial_data, add_user, \
     get_users_by_name, update_user_name
 import numpy as np
@@ -48,7 +48,7 @@ db.init_app(app)
 os.makedirs(app.config['CACHE_DIR'], exist_ok=True)
 
 VALID_API_KEYS = cfg.app.VALID_API_KEYS
-LINK_RELATIONS_URL = "/identities/link-relations#"
+LINK_RELATIONS_URL = "/face_pass/link-relations#"
 
 
 def require_api_key(function):
@@ -103,7 +103,7 @@ class NameConverter(BaseConverter):
         return user_name
 
 
-@app.route('/identities/register', methods=['POST'])
+@app.route('/identities/register', methods=['POST'], endpoint='register')
 @require_api_key
 def register_person():
     name = request.form.get('name')
@@ -183,12 +183,14 @@ def register_person():
     builder.add_control_get(user_id=user_id)
     builder.add_control_update(user_id=user_id)
     builder.add_control_delete(user_id=user_id)
-    builder.add_control_access_request()
+    builder.add_control_access_request(user_id=user_id)
+    builder.add_control_permissions(user_id=user_id)
+    builder.add_control_access_logs(user_id=user_id)
     builder['message'] = f'User {name} registered successfully with ID {user_id}'
     return Response(json.dumps(builder), status=201, mimetype=MASON)
 
 
-@app.route('/identities/<int:user_id>/profile', methods=['GET'])
+@app.route('/identities/<int:user_id>/profile', methods=['GET'], endpoint='get_by_id')
 @require_api_key
 def get_profile(user_id):
     cache_key = f"user_profile_{user_id}"
@@ -215,12 +217,14 @@ def get_profile(user_id):
     builder.add_namespace("Identities", LINK_RELATIONS_URL)
     builder.add_control_update(user_id=user_id)
     builder.add_control_delete(user_id=user_id)
-    builder.add_control_access_log(user_id=user_id)
+    builder.add_control_access_request(user_id=user_id)
+    builder.add_control_permissions(user_id=user_id)
+    builder.add_control_access_logs(user_id=user_id)
     builder['message'] = json.loads(response)
     return Response(json.dumps(builder), status=201, mimetype=MASON, headers={'Cache': cached})
 
 
-@app.route('/identities/<int:user_id>/update', methods=['PUT'])
+@app.route('/identities/<int:user_id>/update', methods=['PUT'], endpoint='update')
 @require_api_key
 def update_user(user_id):
     is_name = False
@@ -300,8 +304,10 @@ def update_user(user_id):
         builder = IdentityBuilder()
         builder.add_namespace("Identities", LINK_RELATIONS_URL)
         builder.add_control_delete(user_id=user_id)
-        builder.add_control_access_log(user_id=user_id)
-        builder.add_control_get(user_id=user_id)
+        builder.add_control_update(user_id=user_id)
+        builder.add_control_access_request(user_id=user_id)
+        builder.add_control_permissions(user_id=user_id)
+        builder.add_control_access_logs(user_id=user_id)
         builder['message'] = f'User:{user_id} updated successfully'
         return Response(json.dumps(builder), status=200, mimetype=MASON)
 
@@ -310,7 +316,7 @@ def update_user(user_id):
             create_error_response(404, title="NotFound", message=f'No data for user:{user_id} to updated')
 
 
-@app.route('/identities/access-request', methods=['POST'])
+@app.route('/identities/access-request', methods=['POST'], endpoint='access_request')
 @require_api_key
 def handle_access_request():
     if 'image' not in request.files:
@@ -352,10 +358,8 @@ def handle_access_request():
                 if access:
                     builder = IdentityBuilder()
                     builder.add_namespace("Identities", LINK_RELATIONS_URL)
-                    builder.add_control_delete(user_id=user_id)
-                    builder.add_control_access_log(user_id=user_id)
-                    builder.add_control_get(user_id=user_id)
-                    builder.add_control_update(user_id=user_id)
+                    builder.add_control_access_by(user_id=user_id)
+                    builder.add_control_log(log_id=access_request_id)
                     builder['message'] = f'User:{user_id} updated successfully'
                     return Response(json.dumps(builder), status=201, mimetype=MASON)
                 else:
@@ -374,7 +378,7 @@ def handle_access_request():
 app.url_map.converters['name'] = NameConverter
 
 
-@app.route('/identities/<name:user_name>/profile', methods=['GET'])
+@app.route('/identities/<name:user_name>/profile', methods=['GET'], endpoint='get_by_name')
 @require_api_key
 @cache.cached(key_prefix=query_key)
 def get_users(user_name):
@@ -383,15 +387,17 @@ def get_users(user_name):
         create_error_response(404, title="NotFound", message=f'No users in that name {user_name}')
     builder = IdentityBuilder()
     builder.add_namespace("Identities", LINK_RELATIONS_URL)
-    # builder.add_control_delete(user_id=user_id)
-    # builder.add_control_access_log(user_id=user_id)
-    # builder.add_control_get(user_id=user_id)
-    # builder.add_control_update(user_id=user_id)
+    for user in users:
+        builder.add_control_delete(user_id=user.id)
+        builder.add_control_access_logs(user_id=user.id)
+        builder.add_control_update(user_id=user.id)
+        builder.add_control_access_request(user_id=user.id)
+        builder.add_control_permissions(user_id=user.id)
     builder['message'] = [user.to_dict() for user in users]
     return Response(json.dumps(builder), status=200, mimetype=MASON)
 
 
-@app.route('/identities/<int:user_id>/delete', methods=['DELETE'])
+@app.route('/identities/<int:user_id>/delete', methods=['DELETE'], endpoint='delete')
 @require_api_key
 def delete_identity(user_id):
     user = get_user_profile(user_id)
@@ -402,14 +408,15 @@ def delete_identity(user_id):
         builder = IdentityBuilder()
         builder.add_namespace("Identities", LINK_RELATIONS_URL)
         builder.add_control_add()
-        builder.add_control_access_request()
+        builder.add_control_get_name(user_name='user_name')
+        builder.add_control_get(user_id='user_id')
         builder['message'] = f"User {user_id} deleted successfully"
         return Response(json.dumps(builder), status=200, mimetype=MASON)
 
 
-@app.route('/access-log/<int:user_id>', methods=['GET'])
+@app.route('/access-log/<int:user_id>', methods=['GET'], endpoint='access_log_by_user')
 @require_api_key
-def get_access_logs(user_id):
+def get_access_logs_user(user_id):
     user = get_user_profile(user_id)
     if not user:
         create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
@@ -417,11 +424,75 @@ def get_access_logs(user_id):
     access_logs = get_user_access_logs(user_id)
     builder = IdentityBuilder()
     builder.add_namespace("Identities", LINK_RELATIONS_URL)
-    builder.add_control_delete(user_id=user_id)
-    builder.add_control_access_log(user_id=user_id)
-    builder.add_control_get(user_id=user_id)
-    builder.add_control_update(user_id=user_id)
+    builder.add_control_logs_by(user_id=user_id)
+    for access_log in access_logs:
+        builder.add_control_by_access(access_request_id=access_log.access_request_id)
     builder['message'] = [access_log.to_dict() for access_log in access_logs]
+    return Response(json.dumps(builder), status=200, mimetype=MASON)
+
+
+@app.route('/identities/<int:user_id>/requests', methods=['GET'], endpoint='requests_by_user')
+@require_api_key
+def get_requests(user_id):
+    user = get_user_profile(user_id)
+    if not user:
+        create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
+    requests = get_user_access_requests(user_id)
+    builder = IdentityBuilder()
+    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_control_access_by(user_id=user_id)
+    builder.add_control_request_access()
+    for request_ in requests:
+        builder.add_control_log(log_id=request_.access_logs.id)
+    builder['message'] = [request_.to_dict() for request_ in requests]
+    return Response(json.dumps(builder), status=200, mimetype=MASON)
+
+
+@app.route('/identities/<int:user_id>/permissions', methods=['GET'], endpoint='permissions_by_user')
+@require_api_key
+def get_requests(user_id):
+    user = get_user_profile(user_id)
+    if not user:
+        create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
+    user_permissions = get_user_permissions(user_id)
+    builder = IdentityBuilder()
+    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_control_permission_by(user_id=user_id)
+    builder['message'] = [user_permission.to_dict() for user_permission in user_permissions]
+    return Response(json.dumps(builder), status=200, mimetype=MASON)
+
+
+@app.route('/access-log/<int:log_id>', methods=['GET'], endpoint='access_log')
+@require_api_key
+def get_log(log_id):
+    access_log = get_access_log(log_id)
+    if not access_log:
+        create_error_response(404, title="NotFound", message=f'Log {log_id} not found')
+
+    access_request_id = access_log.access_request_id
+    access_request = get_access_request(access_request_id)
+
+    builder = IdentityBuilder()
+    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_control_logs_by(user_id=access_request.user_profile_id)
+    builder.add_control_by_access(access_request_id=access_request_id)
+    builder['message'] = access_log.to_dict()
+    return Response(json.dumps(builder), status=200, mimetype=MASON)
+
+
+@app.route('/access-request/<int:access_request_id>', methods=['GET'], endpoint='access_log')
+@require_api_key
+def get_access_logs(access_request_id):
+    access_request = get_access_request(access_request_id)
+    if not access_request:
+        create_error_response(404, title="NotFound", message=f'Access request {access_request_id} not found')
+
+    builder = IdentityBuilder()
+    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_control_access_by(user_id=access_request.user_profile_id)
+    builder.add_control_request_access()
+    builder.add_control_log(access_request.access_logs.id)
+    builder['message'] = access_request.to_dict()
     return Response(json.dumps(builder), status=200, mimetype=MASON)
 
 
@@ -431,7 +502,7 @@ def terms_of_service():
     return render_template('tos.html')
 
 
-@app.route("/identities/link-relations/")
+@app.route("/face_pass/link-relations")
 def send_link_relations_html():
     return render_template('link_relations.html')
 

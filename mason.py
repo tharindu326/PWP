@@ -61,6 +61,50 @@ class MasonBuilder(dict):
 
 
 class IdentityBuilder(MasonBuilder):
+    # FacePassIdentities
+
+    def add_control_permissions(self, user_id):
+        self.add_control(
+            "FacePassIdentities:permissions",
+            href=f"/identities/{user_id}/permissions",
+            method="GET",
+            title="Get all the permissions related to an Identity"
+        )
+
+    def add_control_access_request(self, user_id):
+        self.add_control(
+            "FacePassIdentities:access-requests",
+            href=f"/identities/{user_id}/requests",
+            method="POST",
+            title="get access requests belongs to the identity",
+            encoding="json",
+        )
+
+    def add_control_update(self, user_id):
+        self.add_control(
+            "FacePassIdentities:edit",
+            href=f"/identities/{user_id}/update",
+            method="PUT",
+            title="Updates the details (name, permissions, facial data) of an existing user",
+            encoding="json",
+        )
+
+    def add_control_delete(self, user_id):
+        self.add_control(
+            "FacePassIdentities:delete",
+            href=f"/identities/{user_id}/delete",
+            method="DELETE",
+            title="Deletes user's profile and all associated data from the system"
+        )
+
+    def add_control_access_logs(self, user_id):
+        self.add_control(
+            "FacePassIdentities:access-logs",
+            href=f"/access-log/{user_id}",
+            method="GET",
+            title="Retrieves access logs for a specified user"
+        )
+
     def add_control_add(self):
         self.add_control(
             "FacePassIdentities:register",
@@ -85,38 +129,59 @@ class IdentityBuilder(MasonBuilder):
             title="the profile of the identity by the ID"
         )
 
-    def add_control_access_request(self):
+    # FacePassAccessLogs
+
+    def add_control_by_access(self, access_request_id):
         self.add_control(
-            "FacePassIdentities:access-request",
+            "FacePassAccessLogs:by-access",
+            href=f'/access-request/{access_request_id}',
+            method="GET",
+            title="Get the access request corresponding to access request"
+        )
+
+    def add_control_logs_by(self, user_id):
+        self.add_control(
+            "FacePassAccessLogs:log-by",
+            href=f"/identities/{user_id}/profile",
+            method="GET",
+            title="the user profile of the log"
+        )
+
+    # FacePassAccessRequests
+
+    def add_control_request_access(self):
+        self.add_control(
+            "FacePassAccessRequests:request-access",
             href="/identities/access-request",
             method="POST",
             title="Handle an access request using facial recognition to grant or deny access.",
             encoding="json",
         )
 
-    def add_control_update(self, user_id):
+    def add_control_log(self, log_id):
         self.add_control(
-            "FacePassIdentities:edit",
-            href=f"/identities/{user_id}/update",
-            method="PUT",
-            title="Updates the details (name, permissions, facial data) of an existing user",
-            encoding="json",
-        )
-
-    def add_control_delete(self, user_id):
-        self.add_control(
-            "FacePassIdentities:delete",
-            href=f"/identities/{user_id}/delete",
-            method="DELETE",
-            title="Deletes user's profile and all associated data from the system"
-        )
-
-    def add_control_access_log(self, user_id):
-        self.add_control(
-            "FacePassIdentities:access-log",
-            href=f"/access-log/{user_id}",
+            "FacePassAccessRequests:log",
+            href=f"/access-log/{log_id}",
             method="GET",
-            title="Retrieves access logs for a specified user"
+            title="get the access log of the access request"
+        )
+
+    def add_control_access_by(self, user_id):
+        self.add_control(
+            "FacePassAccessRequests:access-by",
+            href=f"/identities/{user_id}/profile",
+            method="GET",
+            title="user details of the access request"
+        )
+
+    # FacePassPermissions
+
+    def add_control_permission_by(self, user_id):
+        self.add_control(
+            "FacePassPermissions:permission_by",
+            href=f"/identities/{user_id}/profile",
+            method="GET",
+            title="profile that own the permission"
         )
 
 

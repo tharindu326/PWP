@@ -408,3 +408,165 @@ paths:
                   error:
                     type: string
                     example: No users found with that name.
+
+  /identities/{user_id}/requests:
+    get:
+      summary: Get access requests belongs to users
+      security:
+        - ApiKeyAuth: [ ]
+      parameters:
+        - name: user_id
+          in: path
+          description: The unique identifier for the user whose access requests are being retrieved.
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: An array of access requests for the user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: The unique identifier of the access request entry.
+                    timestamp:
+                      type: string
+                      description: time stamp of when made the access reuest by the user
+                    outcome:
+                      type: string
+                      description: outcome of the request whether permission granted or not
+                    associated_permission:
+                      type: string
+                      description: minimum access level provided when calling the request
+                    associated_facial_data:
+                      type: string
+                      format: binary
+                      description: The facial image for access request.
+        '404':
+          $ref: '#/components/responses/UserNotFound'
+
+  /identities/{user_id}/permissions:
+    get:
+      summary: Get associated permissions belongs to users
+      security:
+        - ApiKeyAuth: [ ]
+      parameters:
+        - name: user_id
+          in: path
+          description: The unique identifier for the user whose access requests are being retrieved.
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: An array of permissions for the user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: The unique identifier of the access request entry.
+                    user_profile_id:
+                      type: integer
+                      description: profile id of the identity
+                    permission_level:
+                      type: string
+                      description: associated permissions for the identity
+        '404':
+          $ref: '#/components/responses/UserNotFound'
+
+  /access-request/{access_request_id}:
+    get:
+      summary: Get access requests by id
+      security:
+        - ApiKeyAuth: [ ]
+      parameters:
+        - name: access_request_id
+          in: path
+          description: The unique identifier for the access request.
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: access request details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: The unique identifier of the access request entry.
+                  timestamp:
+                    type: string
+                    description: time stamp of when made the access reuest by the user
+                  outcome:
+                    type: string
+                    description: outcome of the request whether permission granted or not
+                  associated_permission:
+                    type: string
+                    description: minimum access level provided when calling the request
+                  associated_facial_data:
+                    type: string
+                    format: binary
+                    description: The facial image for access request.
+        '404':
+          description: Access request not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: access reuest id {access_request_id} not found.
+
+  /access-log/{log_id}:
+    get:
+      summary: Get access log by id
+      security:
+        - ApiKeyAuth: [ ]
+      parameters:
+        - name: log_id
+          in: path
+          description: The unique identifier for the access log.
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: access log details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: The unique identifier of the access log entry.
+                  access_request_id:
+                    type: integer
+                    description: The unique identifier of the access request.
+                  details:
+                    type: string
+                    description: Additional details about the access request, if any.
+        '404':
+          description: Access log not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: access log id {log_id} not found.

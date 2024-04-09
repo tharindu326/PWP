@@ -15,6 +15,10 @@ def get_user_access_logs(user_id):
         .order_by(AccessRequest.timestamp.desc()).all()
 
 
+def get_access_log(log_id):
+    return AccessLog.query.get(log_id)
+
+
 # def generate_access_report(start_date, end_date):
 #     access_summary = db.session.query(AccessLog.details, func.count(AccessLog.id).label('access_count')).\
 #         filter(AccessLog.timestamp >= start_date, AccessLog.timestamp <= end_date).group_by(AccessLog.details).all()

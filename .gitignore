@@ -12,5 +12,4 @@ test.py
 *.jpg
 *.png
 *.jpeg
-*.yaml
 *.json

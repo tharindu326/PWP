@@ -203,7 +203,6 @@ def get_profile(user_id):
         cached = 'HIT'
     else:
         user_profile = get_user_profile(user_id)
-        print(user_profile)
         if user_profile is None:
             return create_error_response(404, title="NotFound", message='User not found')
         # user_permissions = get_user_permissions(user_id)
@@ -425,7 +424,7 @@ def delete_identity(user_id):
         builder.add_control_get_name(user_name='user_name')
         builder.add_control_get(user_id='user_id')
         builder['message'] = f"User {user_id} deleted successfully"
-        return Response(json.dumps(builder), status=200, mimetype=MASON)
+        return Response(json.dumps(builder), status=204, mimetype=MASON)
 
 
 @app.route('/identities/<int:user_id>/access-logs', methods=['GET'], endpoint='access_log_by_user')

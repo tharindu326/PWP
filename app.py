@@ -36,11 +36,11 @@ app.config['CACHE_DIR'] = 'cache_data'
 app.config['CACHE_DEFAULT_TIMEOUT'] = 0
 
 app.config['SWAGGER'] = {
-                            "openapi": "3.0.3",
-                            "uiversion": 3,
-                            "specs_route": "/apidocs/",
-                            "doc_dir": "docs/",
-                        }
+    "openapi": "3.0.3",
+    "uiversion": 3,
+    "specs_route": "/apidocs/",
+    "doc_dir": "docs/",
+}
 swagger = Swagger(app, template_file='docs/FacePass.yaml')
 
 cache = Cache(app)
@@ -49,6 +49,7 @@ os.makedirs(app.config['CACHE_DIR'], exist_ok=True)
 
 VALID_API_KEYS = cfg.app.VALID_API_KEYS
 LINK_RELATIONS_URL = "/face_pass/link-relations#"
+PROFILE_URL = '/face_pass/profile'
 
 
 def require_api_key(function):
@@ -137,12 +138,12 @@ def register_person():
                                      message='please provide associated permission levels for the user')
     else:
         if not isinstance(permissions_list, list):
-            create_error_response(400, title="InvalidInputData",
+            return create_error_response(400, title="InvalidInputData",
                                   message='permissions needed to be a list')
         else:
             for user_permission in permissions_list:
                 if user_permission.lower() not in cfg.permission.user_permission_levels:
-                    create_error_response(400, title="InvalidInputData",
+                    return create_error_response(400, title="InvalidInputData",
                                           message=f'Invalid permission level: {user_permission.lower()}. Use valid permission levels: '
                                                   f'{cfg.permission.user_permission_levels}')
     user_id = None
@@ -167,7 +168,7 @@ def register_person():
                 cv2.imwrite(cropped_face_path, cropped_face)
         except Exception as e:
             db.session.rollback()
-            create_error_response(500, title="ServerError",
+            return create_error_response(500, title="ServerError",
                                   message=f'An error occurred: {str(e)}')
 
     # add permissions
@@ -179,7 +180,9 @@ def register_person():
     classifier.train()
 
     builder = IdentityBuilder()
-    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_namespace("FacePass", LINK_RELATIONS_URL)
+    builder.add_control("self", href=request.path)
+    builder.add_control("profile", href=PROFILE_URL)
     builder.add_control_get(user_id=user_id)
     builder.add_control_update(user_id=user_id)
     builder.add_control_delete(user_id=user_id)
@@ -200,8 +203,9 @@ def get_profile(user_id):
         cached = 'HIT'
     else:
         user_profile = get_user_profile(user_id)
-        if not user_profile:
-            create_error_response(404, title="NotFound", message='User not found')
+        print(user_profile)
+        if user_profile is None:
+            return create_error_response(404, title="NotFound", message='User not found')
         # user_permissions = get_user_permissions(user_id)
         # permission_list = [user_permission.permission_level for user_permission in user_permissions]
         #
@@ -214,7 +218,9 @@ def get_profile(user_id):
         cache.set(cache_key, jsonify(response))
 
     builder = IdentityBuilder()
-    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_namespace("FacePass", LINK_RELATIONS_URL)
+    builder.add_control("self", href=request.path)
+    builder.add_control("profile", href=PROFILE_URL)
     builder.add_control_update(user_id=user_id)
     builder.add_control_delete(user_id=user_id)
     builder.add_control_access_request(user_id=user_id)
@@ -234,7 +240,7 @@ def update_user(user_id):
     name = request.form.get('name')
     if name:
         if not_string(name):
-            create_error_response(400, title="InvalidInputData",
+            return create_error_response(400, title="InvalidInputData",
                                   message='Numbers and special characters are not allowed in name')
         else:
             name = format_name(name)
@@ -244,11 +250,11 @@ def update_user(user_id):
 
     if permissions_list:
         if not isinstance(permissions_list, list):
-            create_error_response(400, title="InvalidInputData", message='permissions needed to be a list')
+            return create_error_response(400, title="InvalidInputData", message='permissions needed to be a list')
         else:
             for user_permission in permissions_list:
                 if user_permission.lower() not in cfg.permission.user_permission_levels:
-                    create_error_response(400, title="InvalidInputData",
+                    return create_error_response(400, title="InvalidInputData",
                                           message=f'Invalid permission level: {user_permission.lower()}. Use valid permission levels: '
                                                   f'{cfg.permission.user_permission_levels}')
             is_permission = True
@@ -258,13 +264,13 @@ def update_user(user_id):
         if not any(file.filename == '' for file in files):
             for file in files:
                 if not allowed_file(file.filename):
-                    create_error_response(400, title="InvalidInputData",
+                    return create_error_response(400, title="InvalidInputData",
                                           message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
         else:
-            create_error_response(400, title="MissingData", message='No image file/files provided')
+            return create_error_response(400, title="MissingData", message='No image file/files provided')
         user = get_user_profile(user_id)
-        if not user:
-            create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
+        if user is None:
+            return create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
         is_file = True
 
     # update permissions
@@ -296,13 +302,15 @@ def update_user(user_id):
                     cv2.imwrite(cropped_face_path, cropped_face)
             except Exception as e:
                 db.session.rollback()
-                create_error_response(500, title="ServerError", message=f'An error occurred: {str(e)}')
+                return create_error_response(500, title="ServerError", message=f'An error occurred: {str(e)}')
 
         # Clear cache for the updated user profile
         cache.delete(f"user_profile_{user_id}")
 
         builder = IdentityBuilder()
-        builder.add_namespace("Identities", LINK_RELATIONS_URL)
+        builder.add_namespace("FacePass", LINK_RELATIONS_URL)
+        builder.add_control("self", href=request.path)
+        builder.add_control("profile", href=PROFILE_URL)
         builder.add_control_delete(user_id=user_id)
         builder.add_control_update(user_id=user_id)
         builder.add_control_access_request(user_id=user_id)
@@ -313,26 +321,26 @@ def update_user(user_id):
 
     else:
         if not is_name and not is_permission:
-            create_error_response(404, title="NotFound", message=f'No data for user:{user_id} to updated')
+            return create_error_response(404, title="NotFound", message=f'No data for user:{user_id} to updated')
 
 
 @app.route('/identities/access-request', methods=['POST'], endpoint='access_request')
 @require_api_key
 def handle_access_request():
     if 'image' not in request.files:
-        create_error_response(400, title="MissingData", message='No image part in the request')
+        return create_error_response(400, title="MissingData", message='No image part in the request')
 
     file = request.files['image']
     if file.filename == '':
-        create_error_response(400, title="MissingData", message='No selected image file')
+        return create_error_response(400, title="MissingData", message='No selected image file')
     if not allowed_file(file.filename):
-        create_error_response(400, title="InvalidInputData",
+        return create_error_response(400, title="InvalidInputData",
                               message=f'file type: {file.filename.split(".")[-1]} not allowed')
     associated_permission = request.form.get('associated_permission')
     if not associated_permission:
-        create_error_response(400, title="MissingData", message='Associated permission is required')
+        return create_error_response(400, title="MissingData", message='Associated permission is required')
     if associated_permission.lower() not in cfg.permission.user_permission_levels:
-        create_error_response(400, title="InvalidInputData",
+        return create_error_response(400, title="InvalidInputData",
                               message=f'Invalid permission level: {associated_permission.lower()}. Use valid permission levels: '
                                       f'{cfg.permission.user_permission_levels}')
     if file and allowed_file(file.filename):
@@ -349,7 +357,7 @@ def handle_access_request():
                 print(f'Recognized user: {user_id} | probability: {probability} | required minimal permission: '
                       f'{associated_permission} | prob_threshold: {cfg.recognizer.threshold}')
                 if not probability > cfg.recognizer.threshold:
-                    create_error_response(401, title="NotRecognized", message=f'user not recognized. Access denied')
+                    return create_error_response(401, title="NotRecognized", message=f'user not recognized. Access denied')
                 access = validate_access_for_user(user_id, associated_permission)
                 access_request_id = log_access_request(user_id, associated_permission, associated_facial_data=blobData,
                                                        outcome=access)
@@ -357,21 +365,23 @@ def handle_access_request():
 
                 if access:
                     builder = IdentityBuilder()
-                    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+                    builder.add_namespace("FacePass", LINK_RELATIONS_URL)
+                    builder.add_control("self", href=request.path)
+                    builder.add_control("profile", href=PROFILE_URL)
                     builder.add_control_access_by(user_id=user_id)
                     builder.add_control_log(log_id=access_request_id)
                     builder['message'] = f'User:{user_id} updated successfully'
                     return Response(json.dumps(builder), status=201, mimetype=MASON)
                 else:
-                    create_error_response(403, title="NotAuthorized",
+                    return create_error_response(403, title="NotAuthorized",
                                           message=f'user: {user_id} does not have permission. Access declined')
             else:
-                create_error_response(500, title="NotFound", message=f'No face detected from the image')
+                return create_error_response(500, title="NotFound", message=f'No face detected from the image')
         except Exception as e:
             db.session.rollback()
-            create_error_response(500, title="ServerError", message=f'An error occurred: {str(e)}')
+            return create_error_response(500, title="ServerError", message=f'An error occurred: {str(e)}')
     else:
-        create_error_response(400, title="InvalidInputData",
+        return create_error_response(400, title="InvalidInputData",
                               message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
 
 
@@ -383,10 +393,12 @@ app.url_map.converters['name'] = NameConverter
 @cache.cached(key_prefix=query_key)
 def get_users(user_name):
     users = get_users_by_name(user_name)
-    if not users:
-        create_error_response(404, title="NotFound", message=f'No users in that name {user_name}')
+    if users is None:
+        return create_error_response(404, title="NotFound", message=f'No users in that name {user_name}')
     builder = IdentityBuilder()
-    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_namespace("FacePass", LINK_RELATIONS_URL)
+    builder.add_control("profile", href=PROFILE_URL)
+    builder.add_control("self", href=request.path)
     for user in users:
         builder.add_control_delete(user_id=user.id)
         builder.add_control_access_logs(user_id=user.id)
@@ -402,11 +414,13 @@ def get_users(user_name):
 def delete_identity(user_id):
     user = get_user_profile(user_id)
     if user is None:
-        create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
+        return create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
 
     if delete_user_profile(user_id):
         builder = IdentityBuilder()
-        builder.add_namespace("Identities", LINK_RELATIONS_URL)
+        builder.add_namespace("FacePass", LINK_RELATIONS_URL)
+        builder.add_control("self", href=request.path)
+        builder.add_control("profile", href=PROFILE_URL)
         builder.add_control_add()
         builder.add_control_get_name(user_name='user_name')
         builder.add_control_get(user_id='user_id')
@@ -418,12 +432,14 @@ def delete_identity(user_id):
 @require_api_key
 def get_access_logs_user(user_id):
     user = get_user_profile(user_id)
-    if not user:
-        create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
+    if user is None:
+        return create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
 
     access_logs = get_user_access_logs(user_id)
     builder = IdentityBuilder()
-    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_namespace("FacePass", LINK_RELATIONS_URL)
+    builder.add_control("self", href=request.path)
+    builder.add_control("profile", href=PROFILE_URL)
     builder.add_control_logs_by(user_id=user_id)
     for access_log in access_logs:
         builder.add_control_by_access(access_request_id=access_log.access_request_id)
@@ -435,11 +451,13 @@ def get_access_logs_user(user_id):
 @require_api_key
 def get_requests(user_id):
     user = get_user_profile(user_id)
-    if not user:
-        create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
+    if user is None:
+        return create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
     requests = get_user_access_requests(user_id)
     builder = IdentityBuilder()
-    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_namespace("FacePass", LINK_RELATIONS_URL)
+    builder.add_control("self", href=request.path)
+    builder.add_control("profile", href=PROFILE_URL)
     builder.add_control_access_by(user_id=user_id)
     builder.add_control_request_access()
     for request_ in requests:
@@ -452,11 +470,13 @@ def get_requests(user_id):
 @require_api_key
 def get_requests(user_id):
     user = get_user_profile(user_id)
-    if not user:
-        create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
+    if user is None:
+        return create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
     user_permissions = get_user_permissions(user_id)
     builder = IdentityBuilder()
-    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_namespace("FacePass", LINK_RELATIONS_URL)
+    builder.add_control("self", href=request.path)
+    builder.add_control("profile", href=PROFILE_URL)
     builder.add_control_permission_by(user_id=user_id)
     builder['message'] = [user_permission.to_dict() for user_permission in user_permissions]
     return Response(json.dumps(builder), status=200, mimetype=MASON)
@@ -466,14 +486,16 @@ def get_requests(user_id):
 @require_api_key
 def get_log(log_id):
     access_log = get_access_log(log_id)
-    if not access_log:
-        create_error_response(404, title="NotFound", message=f'Log {log_id} not found')
+    if access_log is None:
+        return create_error_response(404, title="NotFound", message=f'Log {log_id} not found')
 
     access_request_id = access_log.access_request_id
     access_request = get_access_request(access_request_id)
 
     builder = IdentityBuilder()
-    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_namespace("FacePass", LINK_RELATIONS_URL)
+    builder.add_control("self", href=request.path)
+    builder.add_control("profile", href=PROFILE_URL)
     builder.add_control_logs_by(user_id=access_request.user_profile_id)
     builder.add_control_by_access(access_request_id=access_request_id)
     builder['message'] = access_log.to_dict()
@@ -484,11 +506,13 @@ def get_log(log_id):
 @require_api_key
 def get_access_logs(access_request_id):
     access_request = get_access_request(access_request_id)
-    if not access_request:
-        create_error_response(404, title="NotFound", message=f'Access request {access_request_id} not found')
+    if access_request is None:
+        return create_error_response(404, title="NotFound", message=f'Access request {access_request_id} not found')
 
     builder = IdentityBuilder()
-    builder.add_namespace("Identities", LINK_RELATIONS_URL)
+    builder.add_namespace("FacePass", LINK_RELATIONS_URL)
+    builder.add_control("self", href=request.path)
+    builder.add_control("profile", href=PROFILE_URL)
     builder.add_control_access_by(user_id=access_request.user_profile_id)
     builder.add_control_request_access()
     builder.add_control_log(access_request.access_logs[0].id)
@@ -505,6 +529,11 @@ def terms_of_service():
 @app.route("/face_pass/link-relations")
 def send_link_relations_html():
     return render_template('link_relations.html')
+
+
+@app.route("/face_pass/profile")
+def send_profile_html():
+    return render_template('profile.html')
 
 
 if __name__ == '__main__':

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FacePass Profiles</title>
+</head>
+<body>
+    <h1>FacePass</h1>
+
+    <section id="user-profile">
+        <h2>User Profile</h2>
+        <p>Represents a user with a unique identity within the system.</p>
+        <ul>
+            <li>ID: A unique identifier for the user profile.</li>
+            <li>Name: The name of the user.</li>
+            <li>Access Permissions: A list of permissions associated with the user.</li>
+        </ul>
+    </section>
+
+    <section id="access-permission">
+        <h2>Access Permission</h2>
+        <p>Specifies the level of access granted to a user profile.</p>
+        <ul>
+            <li>ID: A unique identifier for the access permission record.</li>
+            <li>User Profile ID: The identifier for the related user profile.</li>
+            <li>Permission Level: The specific access level granted.</li>
+        </ul>
+    </section>
+
+    <section id="access-request">
+        <h2>Access Request</h2>
+        <p>Logs an access attempt by a user, storing the outcome and any associated permissions.</p>
+        <ul>
+            <li>ID: A unique identifier for the access request.</li>
+            <li>Timestamp: The date and time when the access was requested.</li>
+            <li>Outcome: The result of the access attempt.</li>
+            <li>Associated Permission: The level of access requested.</li>
+        </ul>
+    </section>
+
+    <section id="access-log">
+        <h2>Access Log</h2>
+        <p>Records details about access attempts and outcomes for audit and monitoring purposes.</p>
+        <ul>
+            <li>ID: A unique identifier for the log entry.</li>
+            <li>Access Request ID: Links to the related access request.</li>
+            <li>Details: Additional information about the access event.</li>
+        </ul>
+    </section>
+</body>
+</html>

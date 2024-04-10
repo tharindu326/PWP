@@ -65,7 +65,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_permissions(self, user_id):
         self.add_control(
-            "FacePassIdentities:permissions",
+            "FacePass:permissions",
             href=f"/identities/{user_id}/permissions",
             method="GET",
             title="Get all the permissions related to an Identity"
@@ -73,7 +73,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_access_request(self, user_id):
         self.add_control(
-            "FacePassIdentities:access-requests",
+            "FacePass:access-requests",
             href=f"/identities/{user_id}/requests",
             method="POST",
             title="get access requests belongs to the identity",
@@ -82,7 +82,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_update(self, user_id):
         self.add_control(
-            "FacePassIdentities:edit",
+            "edit",
             href=f"/identities/{user_id}/update",
             method="PUT",
             title="Updates the details (name, permissions, facial data) of an existing user",
@@ -91,7 +91,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_delete(self, user_id):
         self.add_control(
-            "FacePassIdentities:delete",
+            "delete",
             href=f"/identities/{user_id}/delete",
             method="DELETE",
             title="Deletes user's profile and all associated data from the system"
@@ -99,7 +99,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_access_logs(self, user_id):
         self.add_control(
-            "FacePassIdentities:access-logs",
+            "FacePass:access-logs",
             href=f"/identities/{user_id}/access-logs",
             method="GET",
             title="Retrieves access logs for a specified user"
@@ -107,7 +107,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_add(self):
         self.add_control(
-            "FacePassIdentities:register",
+            "FacePass:register",
             href="/identities/register",
             method="POST",
             title="Registers a new identity with their facial data and permissions."
@@ -115,7 +115,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_get_name(self, user_name):
         self.add_control(
-            "FacePassIdentities:get-by-name",
+            "FacePass:get-by-name",
             href=f"/identities/{user_name}/profile",
             method="GET",
             title="Retrieve users by their name, along with their associated access permissions"
@@ -123,7 +123,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_get(self, user_id):
         self.add_control(
-            "FacePassIdentities:get-by-id",
+            "FacePass:get-by-id",
             href=f"/identities/{user_id}/profile",
             method="GET",
             title="the profile of the identity by the ID"
@@ -133,7 +133,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_by_access(self, access_request_id):
         self.add_control(
-            "FacePassAccessLogs:by-access",
+            "FacePass:by-access",
             href=f'/access-request/{access_request_id}',
             method="GET",
             title="Get the access request corresponding to access request"
@@ -141,7 +141,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_logs_by(self, user_id):
         self.add_control(
-            "FacePassAccessLogs:log-by",
+            "FacePass:log-by",
             href=f"/identities/{user_id}/profile",
             method="GET",
             title="the user profile of the log"
@@ -151,7 +151,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_request_access(self):
         self.add_control(
-            "FacePassAccessRequests:request-access",
+            "FacePass:request-access",
             href="/identities/access-request",
             method="POST",
             title="Handle an access request using facial recognition to grant or deny access.",
@@ -160,7 +160,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_log(self, log_id):
         self.add_control(
-            "FacePassAccessRequests:log",
+            "FacePass:log",
             href=f"/access-log/{log_id}",
             method="GET",
             title="get the access log of the access request"
@@ -168,7 +168,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_access_by(self, user_id):
         self.add_control(
-            "FacePassAccessRequests:access-by",
+            "FacePass:access-by",
             href=f"/identities/{user_id}/profile",
             method="GET",
             title="user details of the access request"
@@ -178,7 +178,7 @@ class IdentityBuilder(MasonBuilder):
 
     def add_control_permission_by(self, user_id):
         self.add_control(
-            "FacePassPermissions:permission_by",
+            "FacePass:permission_by",
             href=f"/identities/{user_id}/profile",
             method="GET",
             title="profile that own the permission"

@@ -1,10 +1,9 @@
-<!-- link_relations.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FacePass Identity Link Relations</title>
+    <title>FacePass API Link Relations</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -24,49 +23,95 @@
     </style>
 </head>
 <body>
-    <h1>FacePass Identity Link Relations</h1>
-    <p>This document outlines the link relations used within the FacePass identities endpoints.</p>
+    <h1>FacePass</h1>
+    <p>Outlines the custom link relations used within the FacePass.</p>
 
+    <!-- Link Relations for User Profiles -->
     <div class="relation">
-        <h2>FacePassIdentities:register</h2>
+        <h2>FacePass:register</h2>
         <p>Registers a new identity with their facial data and permissions.</p>
         <code>POST /identities/register</code>
     </div>
 
     <div class="relation">
-        <h2>FacePassIdentities:get-by-name</h2>
-        <p>Retrieve users by their name, along with their associated access permissions.</p>
-        <code>GET /identities/{user_name}/profile</code>
+        <h2>FacePass:permissions</h2>
+        <p>Get all the permissions related to an Identity.</p>
+        <code>GET /identities/{user_id}/permissions</code>
     </div>
 
     <div class="relation">
-        <h2>FacePassIdentities:get-by-id</h2>
-        <p>Retrieves the profile of the identity by the ID.</p>
-        <code>GET /identities/{user_id}/profile</code>
+        <h2>FacePass:access-requests</h2>
+        <p>Get access requests that belong to the identity.</p>
+        <code>POST /identities/{user_id}/requests</code>
     </div>
 
     <div class="relation">
-        <h2>FacePassIdentities:access-request</h2>
-        <p>Handle an access request using facial recognition to grant or deny access.</p>
-        <code>POST /identities/access-request</code>
-    </div>
-
-    <div class="relation">
-        <h2>FacePassIdentities:edit</h2>
+        <h2>edit</h2>
         <p>Updates the details (name, permissions, facial data) of an existing user.</p>
         <code>PUT /identities/{user_id}/update</code>
     </div>
 
     <div class="relation">
-        <h2>FacePassIdentities:delete</h2>
+        <h2>delete</h2>
         <p>Deletes user's profile and all associated data from the system.</p>
         <code>DELETE /identities/{user_id}/delete</code>
     </div>
 
     <div class="relation">
-        <h2>FacePassIdentities:access-log</h2>
+        <h2>FacePass:access-logs</h2>
         <p>Retrieves access logs for a specified user.</p>
-        <code>GET /access-log/{user_id}</code>
+        <code>GET /identities/{user_id}/access-logs</code>
+    </div>
+
+    <div class="relation">
+        <h2>FacePass:get-by-name</h2>
+        <p>Retrieve users by their name, along with their associated access permissions.</p>
+        <code>GET /identities/{user_name}/profile</code>
+    </div>
+
+    <div class="relation">
+        <h2>FacePass:get-by-id</h2>
+        <p>Retrieves the profile of the identity by the ID.</p>
+        <code>GET /identities/{user_id}/profile</code>
+    </div>
+
+    <!-- Link Relations for Access Requests -->
+    <div class="relation">
+        <h2>FacePass:request-access</h2>
+        <p>Handle an access request using facial recognition to grant or deny access.</p>
+        <code>POST /identities/access-request</code>
+    </div>
+
+    <div class="relation">
+        <h2>FacePass:log</h2>
+        <p>Get the access log of the access request.</p>
+        <code>GET /access-log/{log_id}</code>
+    </div>
+
+    <div class="relation">
+        <h2>FacePass:access-by</h2>
+        <p>User details of the access request.</p>
+        <code>GET /identities/{user_id}/profile</code>
+    </div>
+
+    <!-- Link Relations for Access Logs -->
+    <div class="relation">
+        <h2>FacePass:by-access</h2>
+        <p>Get the access request corresponding to access request.</p>
+        <code>GET /access-request/{access_request_id}</code>
+    </div>
+
+    <div class="relation">
+        <h2>FacePass:log-by</h2>
+        <p>The user profile of the log.</p>
+        <code>GET /identities/{user_id}/profile</code>
+    </div>
+
+    <!-- Link Relations for Permissions -->
+    <div class="relation">
+        <h2>FacePass:permission_by</h2>
+        <p>Profile that owns the permission.</p>
+        <code>GET /identities/{user_id}/profile</code>
     </div>
 
 </body>

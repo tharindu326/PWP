@@ -116,7 +116,7 @@ class IdentityBuilder(MasonBuilder):
     def add_control_get_name(self, user_name):
         self.add_control(
             "FacePass:get-by-name",
-            href=f"/identities/{user_name}/profile",
+            href=f"/identities/{user_name}",
             method="GET",
             title="Retrieve users by their name, along with their associated access permissions"
         )

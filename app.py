@@ -27,24 +27,46 @@ import json
 inference = Inference()
 classifier = Classifier()
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = cfg.db.SQLALCHEMY_DATABASE_URI
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = cfg.db.SQLALCHEMY_TRACK_MODIFICATIONS
-app.config['UPLOAD_FOLDER'] = cfg.db.database
-app.config['CACHE_TYPE'] = 'FileSystemCache'
-app.config['CACHE_DIR'] = 'cache_data'
-app.config['CACHE_DEFAULT_TIMEOUT'] = 0
 
-app.config['SWAGGER'] = {
-    "openapi": "3.0.3",
-    "uiversion": 3,
-    "specs_route": "/apidocs/",
-    "doc_dir": "docs/",
-}
+class NameConverter(BaseConverter):
+    def to_python(self, user_name):
+        # if '/' in user_name or '?' in user_name:
+        #     return ValueError('Special characters (?, /) cannot be included in the input data')
+        # if not_string(user_name):
+        #     return ValueError('Numbers and special characters are not allowed in name')
+
+        user_name = format_name(user_name)
+        return user_name
+
+    def to_url(self, user_name):
+        return user_name
+
+
+def create_app():
+    app = Flask(__name__)
+    app.config['SQLALCHEMY_DATABASE_URI'] = cfg.db.SQLALCHEMY_DATABASE_URI
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = cfg.db.SQLALCHEMY_TRACK_MODIFICATIONS
+    app.config['UPLOAD_FOLDER'] = cfg.db.database
+    app.config['CACHE_TYPE'] = 'FileSystemCache'
+    app.config['CACHE_DIR'] = 'cache_data'
+    app.config['CACHE_DEFAULT_TIMEOUT'] = 0
+    app.url_map.converters['name'] = NameConverter
+
+    app.config['SWAGGER'] = {
+        "openapi": "3.0.3",
+        "uiversion": 3,
+        "specs_route": "/apidocs/",
+        "doc_dir": "docs/",
+    }
+    db.init_app(app)
+    return app
+
+
+app = create_app()
+
 swagger = Swagger(app, template_file='docs/FacePass.yaml')
 
 cache = Cache(app)
-db.init_app(app)
 os.makedirs(app.config['CACHE_DIR'], exist_ok=True)
 
 VALID_API_KEYS = cfg.app.VALID_API_KEYS
@@ -89,21 +111,6 @@ def query_key(*args, **kwargs):
     return request.full_path
 
 
-class NameConverter(BaseConverter):
-    def to_python(self, user_name):
-        if '/' in user_name or '?' in user_name:
-            return create_error_response(400, title="InvalidInputData",
-                                         message='special characters (?, /) cannot be included in the input data')
-        if not_string(user_name):
-            return create_error_response(400, title="InvalidInputData",
-                                         message='Numbers and special characters are not allowed in name')
-        user_name = format_name(user_name)
-        return user_name
-
-    def to_url(self, user_name):
-        return user_name
-
-
 @app.route('/identities/register', methods=['POST'], endpoint='register')
 @require_api_key
 def register_person():
@@ -139,13 +146,13 @@ def register_person():
     else:
         if not isinstance(permissions_list, list):
             return create_error_response(400, title="InvalidInputData",
-                                  message='permissions needed to be a list')
+                                         message='permissions needed to be a list')
         else:
             for user_permission in permissions_list:
                 if user_permission.lower() not in cfg.permission.user_permission_levels:
                     return create_error_response(400, title="InvalidInputData",
-                                          message=f'Invalid permission level: {user_permission.lower()}. Use valid permission levels: '
-                                                  f'{cfg.permission.user_permission_levels}')
+                                                 message=f'Invalid permission level: {user_permission.lower()}. Use valid permission levels: '
+                                                         f'{cfg.permission.user_permission_levels}')
     user_id = None
     for i, file in enumerate(files):
         blobData = file.read()
@@ -169,7 +176,7 @@ def register_person():
         except Exception as e:
             db.session.rollback()
             return create_error_response(500, title="ServerError",
-                                  message=f'An error occurred: {str(e)}')
+                                         message=f'An error occurred: {str(e)}')
 
     # add permissions
     for user_permission in permissions_list:
@@ -177,7 +184,8 @@ def register_person():
     # update model with new user
     classifier.get_user_embeddings(user_id)
     classifier.save_embeddings()
-    classifier.train()
+    if len(os.listdir(cfg.db.database)) > 1:
+        classifier.train()
 
     builder = IdentityBuilder()
     builder.add_namespace("FacePass", LINK_RELATIONS_URL)
@@ -225,8 +233,8 @@ def get_profile(user_id):
     builder.add_control_access_request(user_id=user_id)
     builder.add_control_permissions(user_id=user_id)
     builder.add_control_access_logs(user_id=user_id)
-    builder['message'] = json.loads(response)
-    return Response(json.dumps(builder), status=201, mimetype=MASON, headers={'Cache': cached})
+    builder['message'] = response  # json.loads(response)
+    return Response(json.dumps(builder), status=200, mimetype=MASON, headers={'Cache': cached})
 
 
 @app.route('/identities/<int:user_id>/update', methods=['PUT'], endpoint='update')
@@ -240,7 +248,7 @@ def update_user(user_id):
     if name:
         if not_string(name):
             return create_error_response(400, title="InvalidInputData",
-                                  message='Numbers and special characters are not allowed in name')
+                                         message='Numbers and special characters are not allowed in name')
         else:
             name = format_name(name)
             is_name = True
@@ -254,8 +262,8 @@ def update_user(user_id):
             for user_permission in permissions_list:
                 if user_permission.lower() not in cfg.permission.user_permission_levels:
                     return create_error_response(400, title="InvalidInputData",
-                                          message=f'Invalid permission level: {user_permission.lower()}. Use valid permission levels: '
-                                                  f'{cfg.permission.user_permission_levels}')
+                                                 message=f'Invalid permission level: {user_permission.lower()}. Use valid permission levels: '
+                                                         f'{cfg.permission.user_permission_levels}')
             is_permission = True
 
     if 'image' in request.files:
@@ -264,7 +272,7 @@ def update_user(user_id):
             for file in files:
                 if not allowed_file(file.filename):
                     return create_error_response(400, title="InvalidInputData",
-                                          message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
+                                                 message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
         else:
             return create_error_response(400, title="MissingData", message='No image file/files provided')
         user = get_user_profile(user_id)
@@ -334,14 +342,14 @@ def handle_access_request():
         return create_error_response(400, title="MissingData", message='No selected image file')
     if not allowed_file(file.filename):
         return create_error_response(400, title="InvalidInputData",
-                              message=f'file type: {file.filename.split(".")[-1]} not allowed')
+                                     message=f'file type: {file.filename.split(".")[-1]} not allowed')
     associated_permission = request.form.get('associated_permission')
     if not associated_permission:
         return create_error_response(400, title="MissingData", message='Associated permission is required')
     if associated_permission.lower() not in cfg.permission.user_permission_levels:
         return create_error_response(400, title="InvalidInputData",
-                              message=f'Invalid permission level: {associated_permission.lower()}. Use valid permission levels: '
-                                      f'{cfg.permission.user_permission_levels}')
+                                     message=f'Invalid permission level: {associated_permission.lower()}. Use valid permission levels: '
+                                             f'{cfg.permission.user_permission_levels}')
     if file and allowed_file(file.filename):
         blobData = file.read()
         try:
@@ -356,7 +364,8 @@ def handle_access_request():
                 print(f'Recognized user: {user_id} | probability: {probability} | required minimal permission: '
                       f'{associated_permission} | prob_threshold: {cfg.recognizer.threshold}')
                 if not probability > cfg.recognizer.threshold:
-                    return create_error_response(401, title="NotRecognized", message=f'user not recognized. Access denied')
+                    return create_error_response(401, title="NotRecognized",
+                                                 message=f'user not recognized. Access denied')
                 access = validate_access_for_user(user_id, associated_permission)
                 access_request_id = log_access_request(user_id, associated_permission, associated_facial_data=blobData,
                                                        outcome=access)
@@ -373,7 +382,7 @@ def handle_access_request():
                     return Response(json.dumps(builder), status=201, mimetype=MASON)
                 else:
                     return create_error_response(403, title="NotAuthorized",
-                                          message=f'user: {user_id} does not have permission. Access declined')
+                                                 message=f'user: {user_id} does not have permission. Access declined')
             else:
                 return create_error_response(500, title="NotFound", message=f'No face detected from the image')
         except Exception as e:
@@ -381,18 +390,15 @@ def handle_access_request():
             return create_error_response(500, title="ServerError", message=f'An error occurred: {str(e)}')
     else:
         return create_error_response(400, title="InvalidInputData",
-                              message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
+                                     message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
 
 
-app.url_map.converters['name'] = NameConverter
-
-
-@app.route('/identities/<name:user_name>/profile', methods=['GET'], endpoint='get_by_name')
+@app.route('/identities/<name:user_name>', methods=['GET'], endpoint='get_by_name')
 @require_api_key
 @cache.cached(key_prefix=query_key)
 def get_users(user_name):
     users = get_users_by_name(user_name)
-    if users is None:
+    if len(users) == 0:
         return create_error_response(404, title="NotFound", message=f'No users in that name {user_name}')
     builder = IdentityBuilder()
     builder.add_namespace("FacePass", LINK_RELATIONS_URL)
@@ -460,7 +466,8 @@ def get_requests(user_id):
     builder.add_control_access_by(user_id=user_id)
     builder.add_control_request_access()
     for request_ in requests:
-        builder.add_control_log(log_id=request_.access_logs[0].id)
+        if len(request_.access_logs) != 0:
+            builder.add_control_log(log_id=request_.access_logs[0].id)
     builder['message'] = [request_.to_dict() for request_ in requests]
     return Response(json.dumps(builder), status=200, mimetype=MASON)
 
@@ -519,7 +526,7 @@ def get_access_logs(access_request_id):
     return Response(json.dumps(builder), status=200, mimetype=MASON)
 
 
-@app.route('/tos')
+@app.route('/face_pass/tos')
 def terms_of_service():
     # template taken from https://www.gnu.org/licenses/gpl-3.0.en.html
     return render_template('tos.html')

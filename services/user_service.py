@@ -42,13 +42,3 @@ def update_user_name(user_id, new_name):
         return True
     return False
 
-
-if __name__ == "__main__":
-    add_user("Tharindu", b"sample_facial_data")
-    # Fetch and print user profile
-    user = get_user_profile(1)
-    print(f"User: {user.name}")
-    # Update user facial data
-    update_user_facial_data(1, b"new_facial_data")
-    # Delete a user profile
-    delete_user_profile(1)

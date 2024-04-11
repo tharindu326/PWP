@@ -5,10 +5,13 @@ from easydict import EasyDict as edict
 __C = edict()
 cfg = __C
 
+__C.base = edict()
+__C.base.path = 'C:/Users/Zoomi/Desktop/Tharindu/oulu - masters/PWP/PWP/'
+
 __C.db = edict()
-__C.db.SQLALCHEMY_DATABASE_URI = 'sqlite:///FacePass.db'
+__C.db.SQLALCHEMY_DATABASE_URI = f'sqlite:///FacePass.db'  # sqlite:///{__C.base.path}instance/
 __C.db.SQLALCHEMY_TRACK_MODIFICATIONS = False
-__C.db.database = 'database/'
+__C.db.database = f'{__C.base.path}database/'
 
 __C.app = edict()
 __C.app.allowed_extensions = ['jpeg', 'png', 'jpg']
@@ -19,7 +22,7 @@ __C.app.VALID_API_KEYS = ['4fd3efa18991cf343d2dfc1b7b698ac4', '1335286ed1ba18f28
                           '37be65937e12d1cb23f3d4a0880b5fca']
 
 __C.detector = edict()
-__C.detector.weight_file = "face_engine/model_data/yolov8n-face.pt"  # model.pt path(s)
+__C.detector.weight_file = f"{__C.base.path}face_engine/model_data/yolov8n-face.pt"  # model.pt path(s)
 __C.detector.classes = [0]  # filter by class: --class 0, or --class 0 2 3
 __C.detector.OBJECTNESS_CONFIDANCE = 0.2
 __C.detector.NMS_THRESHOLD = 0.45
@@ -51,6 +54,6 @@ __C.permission.user_permission_levels = [
 __C.recognizer = edict()
 __C.recognizer.distance_type = 'Euclidean'  # ['Cosine', 'Euclidean']  # available options for calculate the distance between images for get matches
 __C.recognizer.model = "Facenet512"  # ["VGGFace", "OpenFace", "Facenet", "FbDeepFace", "ArcFace", "Facenet512", "DeepID", "DlibResNet", "DlibWrapper", "SFaceWrapper"]  # face recognition algorithm options.
-__C.recognizer.threshold = 0.2
-__C.recognizer.model_path = 'face_engine/model_data/model_svc.pkl'
-__C.recognizer.embedding_file_path = 'face_engine/model_data/embeddings.pkl'
+__C.recognizer.threshold = 0.9
+__C.recognizer.model_path = f'{__C.base.path}face_engine/model_data/model_svc.pkl'
+__C.recognizer.embedding_file_path = f'{__C.base.path}face_engine/model_data/embeddings.pkl'

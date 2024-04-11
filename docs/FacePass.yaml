@@ -219,9 +219,11 @@ paths:
                   type: string
                   description: The name of the person to register.
                 image:
-                  type: string
-                  format: binary
-                  description: The facial image file for the person.
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: The facial image files for the person.
                 permission:
                   type: array
                   items:
@@ -383,7 +385,7 @@ paths:
                     type: string
                     example: An error occurred {error}.
 
-  /identities/{user_name}/profile:
+  /identities/{user_name}:
     get:
       summary: Retrieve users by their name, along with their associated access permissions.
       parameters:

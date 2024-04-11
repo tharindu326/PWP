@@ -154,6 +154,17 @@ def test_registration_with_invalid_data(client):
     # assert "File type: invalid_image.txt is not allowed. Allowed types are: png, jpg, jpeg" in response.json()["error"]
 
 
+def test_registration_with_invalid_permission_data(client):
+    url = f"{base_url}/identities/register"
+    headers = {"Authorization": API_KEY}
+    data = {"name": 'Hohn', "permission": {"admin":1}}  # Invalid name
+    image_file = FileStorage(stream=open('tests/data/invalid_image.txt', 'rb'), filename='testim.txt',
+                             content_type='image/jpeg')
+    data['image'] = image_file
+    response = client.post(url, headers=headers, data=data)
+    assert response.status_code == 400
+
+
 def test_successful_profile_retrieval(client):
     user_id = 1
     url = f"{base_url}/identities/{user_id}/profile"
@@ -239,6 +250,16 @@ def test_update_with_invalid_name(client):
     # assert "Invalid permission level" in response.json()["error"]
 
 
+def test_update_with_invalid_permission(client):
+    user_id = 1
+    url = f"{base_url}/identities/{user_id}/update"
+    headers = {"Authorization": API_KEY}
+    valid_permissions = {"admin":3}
+    data = {"permission": valid_permissions, 'name': 2}
+    response = client.put(url, headers=headers, data=data)
+    assert response.status_code == 400
+
+
 def test_update_nonexistent_user(client):
     # Test updating details of a user that does not exist
     user_id = 15
@@ -294,16 +315,16 @@ def test_unsuccessful_access_grant(client):
     # assert "user: 2 does not have permission. Access declined" in response.json()["@error"]["@messages"]
 
 
-# def test_successful_access_grant(client):
-#     url = f"{base_url}/identities/access-request"
-#     headers = {"Authorization": API_KEY}
-#     data = {"associated_permission": "admin"}
-#     image_file = FileStorage(stream=open('test_images/Biden/B1.jpg', 'rb'), filename='B1.jpg',
-#                              content_type='image/jpeg')
-#     data['image'] = image_file
-#     response = client.post(url, headers=headers, data=data)
-#     print(response.data)
-#     assert response.status_code == 201
+def test_successful_access_grant(client):
+    url = f"{base_url}/identities/access-request"
+    headers = {"Authorization": API_KEY}
+    data = {"associated_permission": "admin"}
+    image_file = FileStorage(stream=open('test_images/Biden/B1.jpg', 'rb'), filename='B1.jpg',
+                             content_type='image/jpeg')
+    data['image'] = image_file
+    response = client.post(url, headers=headers, data=data)
+    print(response.data)
+    assert response.status_code == 201
     # assert "user: 1 access granted successfully" in response.json()["message"]
 
 
@@ -345,6 +366,14 @@ def test_access_request_no_face_detected(client):
     # assert "No face detected" in response.json()["error"]
 
 
+def test_access_denial_insufficient_image(client):
+    url = f"{base_url}/identities/access-request"
+    headers = {"Authorization": API_KEY}
+    data = {"associated_permission": "intern"}  # Assuming 'guest' permission is insufficient for access
+    response = client.post(url, headers=headers, data=data)
+    assert response.status_code == 400
+
+
 def test_access_request_with_invalid_data(client):
     url = f"{base_url}/identities/access-request"
     headers = {"Authorization": API_KEY}
@@ -364,6 +393,17 @@ def test_access_request_with_missing_data1(client):
     data['image'] = image_file
     response = client.post(url, headers=headers, data=data)
     assert response.status_code == 400
+
+
+# def test_access_request_with_server_error(client):
+#     url = f"{base_url}/identities/access-request"
+#     headers = {"Authorization": API_KEY}
+#     data = {}
+#     image_file = FileStorage(stream=open('test_images/Biden/B1.jpg', 'rb'), filename='B1.jpg', content_type='image/jpeg')
+#     data['image'] = image_file
+#     input("Open the DB instance form DB browser to restrict the writing permissions to the DB, then server error will pop up")
+#     response = client.post(url, headers=headers, data=data)
+#     assert response.status_code == 400
 
 
 def test_access_request_with_missing_data2(client):

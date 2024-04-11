@@ -129,14 +129,14 @@ def register_person():
                                      message='No image part in the request')
 
     files = request.files.getlist('image')
-    if not files or any(file.filename == '' for file in files):
-        return create_error_response(400, title="MissingData",
-                                     message='No image file/files provided')
-    else:
-        for file in files:
-            if not file or not allowed_file(file.filename):
-                return create_error_response(400, title="InvalidInputData",
-                                             message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
+    # if not files or any(file.filename == '' for file in files):
+    #     return create_error_response(400, title="MissingData",
+    #                                  message='No image file/files provided')
+    # else:
+    for file in files:
+        if not file or not allowed_file(file.filename):
+            return create_error_response(400, title="InvalidInputData",
+                                         message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
 
     permissions_list = request.form.getlist('permission')
 
@@ -273,8 +273,8 @@ def update_user(user_id):
                 if not allowed_file(file.filename):
                     return create_error_response(400, title="InvalidInputData",
                                                  message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
-        else:
-            return create_error_response(400, title="MissingData", message='No image file/files provided')
+        # else:
+        #     return create_error_response(400, title="MissingData", message='No image file/files provided')
         user = get_user_profile(user_id)
         if user is None:
             return create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
@@ -359,7 +359,7 @@ def handle_access_request():
                 x, y, w, h = [int(item) for item in boxes[0]]
                 cropped_face = frame_out[y: y + h, x: x + w]
                 face_encode = classifier.reco.encode(cropped_face)
-                user_id = classifier.clf.predict([face_encode])[0]
+                user_id = int(classifier.clf.predict([face_encode])[0])
                 probability = classifier.clf.predict_proba([face_encode])[0][int(user_id) - 1]
                 print(f'Recognized user: {user_id} | probability: {probability} | required minimal permission: '
                       f'{associated_permission} | prob_threshold: {cfg.recognizer.threshold}')
@@ -378,7 +378,7 @@ def handle_access_request():
                     builder.add_control("profile", href=PROFILE_URL)
                     builder.add_control_access_by(user_id=user_id)
                     builder.add_control_log(log_id=access_request_id)
-                    builder['message'] = f'User:{user_id} updated successfully'
+                    builder['message'] = f'User {user_id} access granted successfully'
                     return Response(json.dumps(builder), status=201, mimetype=MASON)
                 else:
                     return create_error_response(403, title="NotAuthorized",

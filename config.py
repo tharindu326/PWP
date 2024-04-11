@@ -54,6 +54,6 @@ __C.permission.user_permission_levels = [
 __C.recognizer = edict()
 __C.recognizer.distance_type = 'Euclidean'  # ['Cosine', 'Euclidean']  # available options for calculate the distance between images for get matches
 __C.recognizer.model = "Facenet512"  # ["VGGFace", "OpenFace", "Facenet", "FbDeepFace", "ArcFace", "Facenet512", "DeepID", "DlibResNet", "DlibWrapper", "SFaceWrapper"]  # face recognition algorithm options.
-__C.recognizer.threshold = 0.9
+__C.recognizer.threshold = 0.87
 __C.recognizer.model_path = f'{__C.base.path}face_engine/model_data/model_svc.pkl'
 __C.recognizer.embedding_file_path = f'{__C.base.path}face_engine/model_data/embeddings.pkl'

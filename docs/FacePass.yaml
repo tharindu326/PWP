@@ -264,11 +264,6 @@ paths:
                   properties:
                     error:
                       type: string
-                      example: "No image file/files provided."
-                - type: object
-                  properties:
-                    error:
-                      type: string
                       example: "Invalid permission level: XXX. Use valid permission levels: ['superadmin', 'admin', 'manager', ...]."
                 - type: object
                   properties:

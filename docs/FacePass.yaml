@@ -42,6 +42,7 @@ components:
               error:
                 type: string
                 description: User {user_id} not found.
+                example: "User {user_id} not found"
 
     ProfileRetrieved:
       description: A user profile  with their associated access permissions.
@@ -368,7 +369,23 @@ paths:
                   error:
                     type: string
         '404':
-          $ref: '#/components/responses/UserNotFound'
+          description: User/date not found.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        description: User {user_id} not found.
+                        example: "User {user_id} not found"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        description: No data to update the user.
+                        example: "No data for user 1 to updated"
         '500':
           description: Server error.
           content:

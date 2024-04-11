@@ -228,6 +228,18 @@ def test_successful_user_update(client):
     # assert f"User details updated successfully" in response.json()["message"]
 
 
+def test_user_update_no_data(client):
+    # Test updating the details of an existing user
+    user_id = 1
+    url = f"{base_url}/identities/{user_id}/update"
+    headers = {"Authorization": API_KEY}
+    updated_name = "Barak"
+    data = {}
+    response = client.put(url, headers=headers, data=data)
+    print(response.data)
+    assert response.status_code == 404
+
+
 def test_update_with_invalid_permissions(client):
     user_id = 1
     url = f"{base_url}/identities/{user_id}/update"

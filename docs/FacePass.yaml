@@ -205,7 +205,7 @@ paths:
                     error:
                       type: string
                       example: "An error occurred"
-  /identities/register:
+  /identities:
     post:
       summary: Registers a new identity with their facial data and permissions.
       security:
@@ -274,7 +274,7 @@ paths:
 
         '500':
           $ref: '#/components/responses/ServerError'
-  /identities/{user_id}/delete:
+  /identities/{user_id}:
     delete:
       summary: Deletes a user's profile and all associated data from the system.
       parameters:
@@ -300,7 +300,7 @@ paths:
         '404':
           $ref: '#/components/responses/UserNotFound'
 
-  /identities/{user_id}/profile:
+  /identities/{user_id}:
     get:
       summary: Retrieves the profile of an identity by the user ID.
       parameters:
@@ -318,7 +318,7 @@ paths:
         '404':
           $ref: '#/components/responses/UserNotFound'
 
-  /identities/{user_id}/update:
+  /identities/{user_id}:
     put:
       summary: Updates the details (name, permissions, facial data) of an existing user.
       parameters:
@@ -397,7 +397,7 @@ paths:
                     type: string
                     example: An error occurred {error}.
 
-  /identities/{user_name}:
+  /identities/name/{user_name}:
     get:
       summary: Retrieve users by their name, along with their associated access permissions.
       parameters:

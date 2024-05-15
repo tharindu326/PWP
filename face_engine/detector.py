@@ -4,6 +4,16 @@ import cv2
 
 
 class Inference:
+    """
+    An inference class for running object detection using a YOLO model.
+    Attributes:
+        model (YOLO): The YOLO model used for object detection.
+        names (list): A list of class names for detected objects.
+        COLORS (dict): A dictionary of colors for drawing bounding boxes and labels.
+    Methods:
+        __init__(): Initializes the Inference instance and loads the YOLO model.
+        infer(frame): Runs the YOLO model on a given frame and processes the detection results.
+    """
     def __init__(self):
         self.model = YOLO(cfg.detector.weight_file)
         self.names = ['face']
@@ -19,6 +29,16 @@ class Inference:
                        }
 
     def infer(self, frame):
+        """
+        Runs the YOLO model on a given frame and processes the detection results.
+        Draws bounding boxes and labels on the frame for detected objects and returns the processed data.
+        Args:
+            frame (numpy.ndarray): The input image/frame for object detection.
+        Returns:
+            tuple: A tuple containing the processed frame, list of bounding boxes, list of confidence scores,
+                   and list of class IDs.
+        """
+        
         # Run the model
         # frame_out, boxes, scores, names, class_ids = self.detector.infer(frame)
         processed_boxes = []

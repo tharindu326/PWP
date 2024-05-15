@@ -43,6 +43,12 @@ class NameConverter(BaseConverter):
 
 
 def create_app():
+    """
+    Create and configure the Flask application.
+    Configures the database, caching, URL converters, and Swagger for API documentation.
+    Returns:
+        app (Flask): The configured Flask application.
+    """
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = cfg.db.SQLALCHEMY_DATABASE_URI
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = cfg.db.SQLALCHEMY_TRACK_MODIFICATIONS
@@ -75,6 +81,13 @@ PROFILE_URL = '/face_pass/profile'
 
 
 def require_api_key(function):
+    """
+    Decorator that requires an API key to access the wrapped function.
+    Args:
+        function (callable): The function to be decorated.
+    Returns:
+        callable: The decorated function with API key requirement.
+    """
     @wraps(function)
     def decorated_function(*args, **kwargs):
         api_key = request.headers.get('Authorization')
@@ -92,14 +105,35 @@ def require_api_key(function):
 
 
 def allowed_file(filename):
+    """
+    Check if the filename has an allowed extension.
+    Args:
+        filename (str): The name of the file to check.
+    Returns:
+        bool: True if the file has an allowed extension, False otherwise.
+    """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in cfg.app.allowed_extensions
 
 
 def not_string(string):
+    """
+    Check if the string contains only alphabetic characters and spaces.
+    Args:
+        string (str): The string to check.
+    Returns:
+        bool: True if the string contains non-alphabetic characters, False otherwise.
+    """
     return bool(re.search(r'[^a-zA-Z\s]', string))
 
 
 def format_name(name):
+    """
+    Format a name to have capitalized words.
+    Args:
+        name (str): The name to format.
+    Returns:
+        str: The formatted name with capitalized words.
+    """
     name_parts = name.split()
     capitalized_name_parts = [part.capitalize() for part in name_parts]
     capitalized_name = ' '.join(capitalized_name_parts)
@@ -108,12 +142,30 @@ def format_name(name):
 
 
 def query_key(*args, **kwargs):
+    """
+    Generate a cache key based on the request's full path.
+    Args:
+        *args: Additional arguments.
+        **kwargs: Additional keyword arguments.
+    Returns:
+        str: The cache key based on the request's full path.
+    """
     return request.full_path
 
 
-@app.route('/identities/register', methods=['POST'], endpoint='register')
+@app.route('/identities', methods=['POST'], endpoint='register')
 @require_api_key
 def register_person():
+    """
+    Register a new user by uploading an image and assigning permissions.
+    Request Form Parameters:
+        - name (str): The name of the user.
+        - image (file): The image file of the user.
+        - permission (list): List of permission levels for the user.
+    Returns:
+        Response: A JSON response with the user registration status and details.
+    """
+    
     name = request.form.get('name')
     if not name:
         return create_error_response(400, title="MissingData",
@@ -123,11 +175,9 @@ def register_person():
                                      message='numbers and special characters (?, /) cannot be included in the input data')
     else:
         name = format_name(name)
-
     if 'image' not in request.files:
         return create_error_response(400, title="MissingData",
                                      message='No image part in the request')
-
     files = request.files.getlist('image')
     # if not files or any(file.filename == '' for file in files):
     #     return create_error_response(400, title="MissingData",
@@ -137,9 +187,7 @@ def register_person():
         if not file or not allowed_file(file.filename):
             return create_error_response(400, title="InvalidInputData",
                                          message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
-
     permissions_list = request.form.getlist('permission')
-
     if not permissions_list:
         return create_error_response(400, title="InvalidInputData",
                                      message='please provide associated permission levels for the user')
@@ -201,9 +249,17 @@ def register_person():
     return Response(json.dumps(builder), status=201, mimetype=MASON)
 
 
-@app.route('/identities/<int:user_id>/profile', methods=['GET'], endpoint='get_by_id')
+@app.route('/identities/<int:user_id>', methods=['GET'], endpoint='get_by_id')
 @require_api_key
 def get_profile(user_id):
+    """
+    Retrieve the profile of an existing user.
+    URL Parameters:
+        - user_id (int): The ID of the user to retrieve the profile for.
+    Returns:
+        Response: A JSON response with the user profile details.
+    """
+    
     cache_key = f"user_profile_{user_id}"
     cached_response = cache.get(cache_key)
     if cached_response:
@@ -237,9 +293,21 @@ def get_profile(user_id):
     return Response(json.dumps(builder), status=200, mimetype=MASON, headers={'Cache': cached})
 
 
-@app.route('/identities/<int:user_id>/update', methods=['PUT'], endpoint='update')
+@app.route('/identities/<int:user_id>', methods=['PUT'], endpoint='update')
 @require_api_key
 def update_user(user_id):
+    """
+    Partially update the details of an existing user.
+    URL Parameters:
+        - user_id (int): The ID of the user to update.
+    Request Form Parameters (optional):
+        - name (str): The new name of the user.
+        - image (file): The new image file of the user.
+        - permission (list): List of new permission levels for the user.
+    Returns:
+        Response: A JSON response with the user partial update status and details.
+    """
+    
     is_name = False
     is_permission = False
     is_file = False
@@ -323,7 +391,7 @@ def update_user(user_id):
         builder.add_control_access_request(user_id=user_id)
         builder.add_control_permissions(user_id=user_id)
         builder.add_control_access_logs(user_id=user_id)
-        builder['message'] = f'User:{user_id} updated successfully'
+        builder['message'] = f'User:{user_id} patially updated successfully'
         return Response(json.dumps(builder), status=200, mimetype=MASON)
 
     else:
@@ -334,6 +402,14 @@ def update_user(user_id):
 @app.route('/identities/access-request', methods=['POST'], endpoint='access_request')
 @require_api_key
 def handle_access_request():
+    """
+    Handle an access request by verifying the user identity and permissions.
+    Request Form Parameters:
+        - image (file): The image file of the user.
+        - associated_permission (str): The permission level required for access.
+    Returns:
+        Response: A JSON response with the access request status and details.
+    """
     if 'image' not in request.files:
         return create_error_response(400, title="MissingData", message='No image part in the request')
 
@@ -393,10 +469,18 @@ def handle_access_request():
                                      message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
 
 
-@app.route('/identities/<name:user_name>', methods=['GET'], endpoint='get_by_name')
+@app.route('/identities/name/<name:user_name>', methods=['GET'], endpoint='get_by_name')
 @require_api_key
 @cache.cached(key_prefix=query_key)
 def get_users(user_name):
+    """
+    Retrieve users by name.
+    URL Parameters:
+        - user_name (str): The name of the users to retrieve.
+    Returns:
+        Response: A JSON response with the list of users matching the name.
+    """
+    
     users = get_users_by_name(user_name)
     if len(users) == 0:
         return create_error_response(404, title="NotFound", message=f'No users in that name {user_name}')
@@ -414,9 +498,16 @@ def get_users(user_name):
     return Response(json.dumps(builder), status=200, mimetype=MASON)
 
 
-@app.route('/identities/<int:user_id>/delete', methods=['DELETE'], endpoint='delete')
+@app.route('/identities/<int:user_id>', methods=['DELETE'], endpoint='delete')
 @require_api_key
 def delete_identity(user_id):
+    """
+    Delete an existing user.
+    URL Parameters:
+        - user_id (int): The ID of the user to delete.
+    Returns:
+        Response: A JSON response with the user deletion status.
+    """
     user = get_user_profile(user_id)
     if user is None:
         return create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
@@ -436,6 +527,14 @@ def delete_identity(user_id):
 @app.route('/identities/<int:user_id>/access-logs', methods=['GET'], endpoint='access_log_by_user')
 @require_api_key
 def get_access_logs_user(user_id):
+    """
+    Retrieve access logs for a specific user.
+    URL Parameters:
+        - user_id (int): The ID of the user to retrieve access logs for.
+    Returns:
+        Response: A JSON response with the access logs of the user.
+    """
+    
     user = get_user_profile(user_id)
     if user is None:
         return create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
@@ -455,6 +554,14 @@ def get_access_logs_user(user_id):
 @app.route('/identities/<int:user_id>/requests', methods=['GET'], endpoint='requests_by_user')
 @require_api_key
 def get_requests(user_id):
+    """
+    Retrieve access requests for a specific user.
+    URL Parameters:
+        - user_id (int): The ID of the user to retrieve access requests for.
+    Returns:
+        Response: A JSON response with the access requests of the user.
+    """
+    
     user = get_user_profile(user_id)
     if user is None:
         return create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
@@ -475,6 +582,14 @@ def get_requests(user_id):
 @app.route('/identities/<int:user_id>/permissions', methods=['GET'], endpoint='permissions_by_user')
 @require_api_key
 def get_requests(user_id):
+    """
+    Retrieve permissions for a specific user.
+    URL Parameters:
+        - user_id (int): The ID of the user to retrieve permissions for.
+    Returns:
+        Response: A JSON response with the permissions of the user.
+    """
+    
     user = get_user_profile(user_id)
     if user is None:
         return create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
@@ -491,6 +606,14 @@ def get_requests(user_id):
 @app.route('/access-log/<int:log_id>', methods=['GET'], endpoint='access_log')
 @require_api_key
 def get_log(log_id):
+    """
+    Retrieve a specific access log.
+    URL Parameters:
+        - log_id (int): The ID of the access log to retrieve.
+    Returns:
+        Response: A JSON response with the details of the access log.
+    """
+    
     access_log = get_access_log(log_id)
     if access_log is None:
         return create_error_response(404, title="NotFound", message=f'Log {log_id} not found')
@@ -511,6 +634,14 @@ def get_log(log_id):
 @app.route('/access-request/<int:access_request_id>', methods=['GET'], endpoint='access_log_by_id')
 @require_api_key
 def get_access_logs(access_request_id):
+    """
+    Retrieve access logs for a specific access request.
+    URL Parameters:
+        - access_request_id (int): The ID of the access request to retrieve logs for.
+    Returns:
+        Response: A JSON response with the access logs of the request.
+    """
+    
     access_request = get_access_request(access_request_id)
     if access_request is None:
         return create_error_response(404, title="NotFound", message=f'Access request {access_request_id} not found')
@@ -528,17 +659,32 @@ def get_access_logs(access_request_id):
 
 @app.route('/face_pass/tos')
 def terms_of_service():
+    """
+    Render the terms of service page.
+    Returns:
+        Response: The rendered terms of service HTML page.
+    """
     # template taken from https://www.gnu.org/licenses/gpl-3.0.en.html
     return render_template('tos.html')
 
 
 @app.route("/face_pass/link-relations")
 def send_link_relations_html():
+    """
+    Render the link relations page.
+    Returns:
+        Response: The rendered link relations HTML page.
+    """
     return render_template('link_relations.html')
 
 
 @app.route("/face_pass/profile")
 def send_profile_html():
+    """
+    Render the profile page.
+    Returns:
+        Response: The rendered profile HTML page.
+    """
     return render_template('profile.html')
 
 

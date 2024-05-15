@@ -17,8 +17,8 @@ Additionally, the discussion covered the application of APIs and their clients, 
 
 
 ## Meeting 2.
-* **DATE:**
-* **ASSISTANTS:**
+* **DATE:** 2024-02-20
+* **ASSISTANTS:** Mika Oja
 
 ### Minutes
 This meeting focused on the database design and code with Mika. The database design was appreciated. In wiki, there were relationships added in the table which were asked to be removed. On the code side, we were asked to add the on_delete behavior for the tables. Lastly we were asked to move the code for populating the DB to a CLI handler instead of implementing it in app main function.
@@ -30,16 +30,26 @@ This meeting focused on the database design and code with Mika. The database des
 
 
 ## Meeting 3.
-* **DATE:**
-* **ASSISTANTS:**
+* **DATE:** 2024-03-25
+* **ASSISTANTS:** Mika Oja
 
 ### Minutes
-*Summary of what was discussed during the meeting*
+Discussed about the API basic implantation. Mentioned some issues in the implementation. 
+Discussed on code quality, documentation and running instructions. 
 
 ### Action points
-*List here the actions points discussed with assistants*
-
-
+* URLs should not have actions as verbs, actions are defined by method
+```
+    /identities/register changed to /identities  with POST
+    /identities/{user_id}/delete to /identities/{user_id}  with DELETE
+    /identities/{user_id}/update to /identities/{user_id}  with PUT
+```
+* Fix PUT since it seems to support partial which is not fully RESTful
+* clean up pylint, move complex code from app to utility functions etc
+* document API related functions
+* Include instructions for running tests
+* Fix the app coverage issue 
+* Fix identity updating API bug  
 
 
 ## Meeting 4.

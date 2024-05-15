@@ -29,7 +29,7 @@ def register_identity(data, images_folder, client, api_key, enable_apikey=True, 
         headers = {"Authorization": api_key}
     else:
         headers = {}
-    url = "/identities/register"
+    url = "/identities"
     if not no_image:
         for filename in os.listdir(images_folder):
             file_path = os.path.join(images_folder, filename)
@@ -143,7 +143,7 @@ def test_registration_with_missing_data(client):
 
 
 def test_registration_with_invalid_data(client):
-    url = f"{base_url}/identities/register"
+    url = f"{base_url}/identities"
     headers = {"Authorization": API_KEY}
     data = {"name": 'Hohn', "permission": ["admin"]}  # Invalid name
     image_file = FileStorage(stream=open('tests/data/invalid_image.txt', 'rb'), filename='testim.txt',
@@ -155,7 +155,7 @@ def test_registration_with_invalid_data(client):
 
 
 def test_registration_with_invalid_permission_data(client):
-    url = f"{base_url}/identities/register"
+    url = f"{base_url}/identities"
     headers = {"Authorization": API_KEY}
     data = {"name": 'Hohn', "permission": {"admin":1}}  # Invalid name
     image_file = FileStorage(stream=open('tests/data/invalid_image.txt', 'rb'), filename='testim.txt',
@@ -167,7 +167,7 @@ def test_registration_with_invalid_permission_data(client):
 
 def test_successful_profile_retrieval(client):
     user_id = 1
-    url = f"{base_url}/identities/{user_id}/profile"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": API_KEY}
 
     response = client.get(url, headers=headers)
@@ -175,7 +175,7 @@ def test_successful_profile_retrieval(client):
 
     # for cache hit
     user_id = 1
-    url = f"{base_url}/identities/{user_id}/profile"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": API_KEY}
 
     response = client.get(url, headers=headers)
@@ -188,7 +188,7 @@ def test_successful_profile_retrieval(client):
 def test_retrieval_with_invalid_user_id(client):
     # non-existent user ID for testing
     user_id = 9999
-    url = f"{base_url}/identities/{user_id}/profile"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": API_KEY}
     response = client.get(url, headers=headers)
     assert response.status_code == 404
@@ -198,7 +198,7 @@ def test_retrieval_with_invalid_user_id(client):
 def test_retrieval_without_api_key(client):
     # user ID for testing
     user_id = 1
-    url = f"{base_url}/identities/{user_id}/profile"
+    url = f"{base_url}/identities/{user_id}"
     response = client.get(url)
     assert response.status_code == 400
     # assert "API Key is missing" in response.json()["error"]
@@ -206,7 +206,7 @@ def test_retrieval_without_api_key(client):
 
 def test_retrieval_with_invalid_api_key(client):
     user_id = 1
-    url = f"{base_url}/identities/{user_id}/profile"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": "InvalidAPIKey"}
     response = client.get(url, headers=headers)
     assert response.status_code == 401
@@ -216,7 +216,7 @@ def test_retrieval_with_invalid_api_key(client):
 def test_successful_user_update(client):
     # Test updating the details of an existing user
     user_id = 2
-    url = f"{base_url}/identities/{user_id}/update"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": API_KEY}
     updated_name = "Barak"
     data = {"name": updated_name, "permission": ["intern", "admin"]}
@@ -231,7 +231,7 @@ def test_successful_user_update(client):
 def test_user_update_no_data(client):
     # Test updating the details of an existing user
     user_id = 1
-    url = f"{base_url}/identities/{user_id}/update"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": API_KEY}
     updated_name = "Barak"
     data = {}
@@ -242,7 +242,7 @@ def test_user_update_no_data(client):
 
 def test_update_with_invalid_permissions(client):
     user_id = 1
-    url = f"{base_url}/identities/{user_id}/update"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": API_KEY}
     invalid_permissions = ["superuser"]
     data = {"permission": invalid_permissions}
@@ -253,7 +253,7 @@ def test_update_with_invalid_permissions(client):
 
 def test_update_with_invalid_name(client):
     user_id = 1
-    url = f"{base_url}/identities/{user_id}/update"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": API_KEY}
     valid_permissions = ["admin"]
     data = {"permission": valid_permissions, 'name': 2}
@@ -264,7 +264,7 @@ def test_update_with_invalid_name(client):
 
 def test_update_with_invalid_permission(client):
     user_id = 1
-    url = f"{base_url}/identities/{user_id}/update"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": API_KEY}
     valid_permissions = {"admin":3}
     data = {"permission": valid_permissions, 'name': 2}
@@ -275,7 +275,7 @@ def test_update_with_invalid_permission(client):
 def test_update_nonexistent_user(client):
     # Test updating details of a user that does not exist
     user_id = 15
-    url = f"{base_url}/identities/{user_id}/update"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": API_KEY}
     updated_name = "Barak"
     data = {"name": updated_name, "permission": ["intern", "admin"]}
@@ -290,7 +290,7 @@ def test_update_nonexistent_user(client):
 
 def test_update_without_api_key(client):
     user_id = 1
-    url = f"{base_url}/identities/{user_id}/update"
+    url = f"{base_url}/identities/{user_id}"
     data = {"name": "NoKey User", "permission": ["admin"]}
     image_file = FileStorage(stream=open('test_images/Obama/O1.jpg', 'rb'), filename='O1.jpg',
                              content_type='image/jpeg')
@@ -302,7 +302,7 @@ def test_update_without_api_key(client):
 
 def test_update_with_invalid_api_key(client):
     user_id = 1
-    url = f"{base_url}/identities/{user_id}/update"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": "InvalidAPIKey"}
     data = {"name": "InvalidKey User", "permission": ["admin"]}
     image_file = FileStorage(stream=open('test_images/Obama/O1.jpg', 'rb'), filename='O1.jpg',
@@ -438,7 +438,7 @@ def test_access_request_with_invalid_data1(client):
 
 def test_successful_user_deletion(client):
     user_id = 2
-    url = f"{base_url}/identities/{user_id}/delete"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": API_KEY}
     response = client.delete(url, headers=headers)
     assert response.status_code == 204
@@ -448,7 +448,7 @@ def test_successful_user_deletion(client):
 def test_delete_nonexistent_user(client):
     # Use an ID assumed not to exist
     user_id = 20
-    url = f"{base_url}/identities/{user_id}/delete"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": API_KEY}
     response = client.delete(url, headers=headers)
     assert response.status_code == 404
@@ -458,7 +458,7 @@ def test_delete_nonexistent_user(client):
 def test_delete_user_without_api_key(client):
     # Use a known user ID that can be attempted for deletion
     user_id = 3
-    url = f"{base_url}/identities/{user_id}/delete"
+    url = f"{base_url}/identities/{user_id}"
     response = client.delete(url)
     # Verify that the API key is required
     assert response.status_code == 400
@@ -468,7 +468,7 @@ def test_delete_user_without_api_key(client):
 def test_delete_user_with_invalid_api_key(client):
     # Use a known user ID that can be attempted for deletion
     user_id = 1
-    url = f"{base_url}/identities/{user_id}/delete"
+    url = f"{base_url}/identities/{user_id}"
     headers = {"Authorization": "InvalidAPIKey"}
     response = client.delete(url, headers=headers)
     assert response.status_code == 401
@@ -514,7 +514,7 @@ def test_retrieve_access_logs_with_invalid_api_key(client):
 
 def test_successful_retrieval_user_by_name(client):
     user_name = 'Biden'
-    url = f"{base_url}/identities/{user_name}"
+    url = f"{base_url}/identities/name/{user_name}"
     headers = {"Authorization": API_KEY}
     response = client.get(url, headers=headers)
     assert response.status_code == 200
@@ -522,7 +522,7 @@ def test_successful_retrieval_user_by_name(client):
 
 def test_retrieval_user_by_name_with_nonexistent_user(client):
     user_name = 'XXX'
-    url = f"{base_url}/identities/{user_name}"
+    url = f"{base_url}/identities/name/{user_name}"
     headers = {"Authorization": API_KEY}
     response = client.get(url, headers=headers)
     print(response.data)
@@ -531,7 +531,7 @@ def test_retrieval_user_by_name_with_nonexistent_user(client):
 
 def test_invalid_retrieval_user_by_name1(client):
     user_name = '?'
-    url = f"{base_url}/identities/{user_name}"
+    url = f"{base_url}/identities/name/{user_name}"
     headers = {"Authorization": API_KEY}
     response = client.get(url, headers=headers)
     print(response.data)

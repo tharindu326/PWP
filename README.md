@@ -30,6 +30,32 @@ You can run the application locally by running the following command. No endpoin
 flask run
 ```
 
+## Running Tests and Generating Coverage Report
+
+This project uses `pytest` for testing and `pytest-cov` for generating coverage reports.
+
+### Prerequisites
+
+Make sure you have `pytest` and `pytest-cov` installed. You can install them using `pip`:
+
+```sh
+pip install pytest pytest-cov
+```
+
+### testing 
+
+Navigate to the root directory of the project:
+
+```sh
+cd <project/directory>
+```
+
+Run the tests and generate a coverage report
+
+```sh
+pytest --cov=. --cov-report=html tests/
+```
+
 ## Implementation Notes
 The web application is currently under construction ⚒️
 

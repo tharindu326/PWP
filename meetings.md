@@ -53,16 +53,19 @@ Discussed on code quality, documentation and running instructions.
 
 
 ## Meeting 4.
-* **DATE:**
-* **ASSISTANTS:**
+* **DATE:** 2024-04-11
+* **ASSISTANTS:** Mika Oja
 
 ### Minutes
-*Summary of what was discussed during the meeting*
+Discussed about hypermedia documentation, test coverage, request bodies. And evaluate hypermedia design and implementation 
 
 ### Action points
-*List here the actions points discussed with assistants*
 
-
+* show hypermedia in examples
+* update missing response codes; 415 missing, 401/403 missing in some endpoints
+* State diagram syntactically correct, but the current URL map is not restful enough for this to make sense. make it restful enough 
+* Connectedness cannot validate fully since function complicity. make it simple by moving support functions using utils
+* requests that need a request body, should include schemas
 
 
 ## Midterm meeting

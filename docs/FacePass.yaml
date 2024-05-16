@@ -44,6 +44,18 @@ components:
                 description: User {user_id} not found.
                 example: "User {user_id} not found"
 
+    UnsupportedMediaType:
+      description: Unsupported Media Type.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                description: Input image file type is not suported.
+                example: "File type: pdf is not allowed. Allowed types are: png, jpg, jpeg."
+
     ProfileRetrieved:
       description: A user profile  with their associated access permissions.
       content:
@@ -164,11 +176,8 @@ paths:
                     error:
                       type: string
                       example: "Invalid permission level: XXX. Use valid permission levels: ['superadmin', 'admin', 'manager', ...]."
-                - type: object
-                  properties:
-                    error:
-                      type: string
-                      example: "File type: pdf is not allowed. Allowed types are: png, jpg, jpeg."
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType' 
         '401':
           description: Unauthorized user access.
           content:
@@ -266,15 +275,29 @@ paths:
                     error:
                       type: string
                       example: "Invalid permission level: XXX. Use valid permission levels: ['superadmin', 'admin', 'manager', ...]."
-                - type: object
-                  properties:
-                    error:
-                      type: string
-                      example: "File type: pdf is not allowed. Allowed types are: png, jpg, jpeg."
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType' 
 
         '500':
           $ref: '#/components/responses/ServerError'
   /identities/{user_id}:
+    get:
+      summary: Retrieves the profile of an identity by the user ID.
+      parameters:
+        - name: user_id
+          in: path
+          description: The user ID of the person whose profile is to be retrieved.
+          required: true
+          schema:
+            type: integer
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/ProfileRetrieved'
+        '404':
+          $ref: '#/components/responses/UserNotFound'
+          
     delete:
       summary: Deletes a user's profile and all associated data from the system.
       parameters:
@@ -300,25 +323,6 @@ paths:
         '404':
           $ref: '#/components/responses/UserNotFound'
 
-  /identities/{user_id}:
-    get:
-      summary: Retrieves the profile of an identity by the user ID.
-      parameters:
-        - name: user_id
-          in: path
-          description: The user ID of the person whose profile is to be retrieved.
-          required: true
-          schema:
-            type: integer
-      security:
-        - ApiKeyAuth: []
-      responses:
-        '200':
-          $ref: '#/components/responses/ProfileRetrieved'
-        '404':
-          $ref: '#/components/responses/UserNotFound'
-
-  /identities/{user_id}:
     put:
       summary: Updates the details (name, permissions, facial data) of an existing user.
       parameters:

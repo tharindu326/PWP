@@ -113,7 +113,7 @@ def process_access_request(file, associated_permission):
         return create_error_response(400, title="MissingData", message='No selected image file')
 
     if not allowed_file(file.filename):
-        return create_error_response(400, title="InvalidInputData", message=f'file type: {file.filename.split(".")[-1]} not allowed')
+        return create_error_response(415, title="UnsupportedMediaType", message=f'file type: {file.filename.split(".")[-1]} not allowed')
 
     if not associated_permission:
         return create_error_response(400, title="MissingData", message='Associated permission is required')
@@ -171,7 +171,7 @@ def update_user_details(user_id, name, permissions_list, files, cache):
         if not any(file.filename == '' for file in files):
             for file in files:
                 if not allowed_file(file.filename):
-                    return create_error_response(400, title="InvalidInputData", message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
+                    return create_error_response(415, title="UnsupportedMediaType", message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
         user = get_user_profile(user_id)
         if user is None:
             return create_error_response(404, title="NotFound", message=f'User: {user_id} not found')
@@ -225,7 +225,7 @@ def register_new_user(name, files, permissions_list):
 
     for file in files:
         if not allowed_file(file.filename):
-            return create_error_response(400, title="InvalidInputData", message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
+            return create_error_response(415, title="UnsupportedMediaType", message=f'File type: {file.filename} is not allowed. Allowed types are: png, jpg, jpeg')
 
     if not permissions_list:
         return create_error_response(400, title="InvalidInputData", message='Please provide associated permission levels for the user')

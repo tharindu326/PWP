@@ -8,15 +8,13 @@ import cv2
 import os
 import time
 from face_engine.detector import Inference
-from flask import request, Response
-import json
+from flask import request
 from services.access_log_service import add_access_log
 from services.access_request_service import log_access_request
-from mason import IdentityBuilder, create_error_response, MASON
+from mason import create_error_response
 from face_engine.classifier import Classifier
 from services.user_service import get_user_profile, update_user_name, update_user_facial_data, add_user
 from services.permission_service import add_permission_to_user, validate_access_for_user
-from flask_caching import Cache
 
 
 inference = Inference()
@@ -105,6 +103,15 @@ def query_key(*args, **kwargs):
     return request.full_path
 
 def process_access_request(file, associated_permission):
+    """
+    Handle an access request by verifying the user identity and permissions.
+    Args:
+        files (werkzeug.datastructures.FileStorage): The file storage object containing the uploaded image file.
+        associated_permission (str): The permission level required for access.
+    Returns:
+        dict: A dictionary containing 'access', 'user_id', and 'access_request_id' if successful.
+        Response: A Flask Response object containing an error message if any error occurs.
+    """
     if 'image' not in file:
         return create_error_response(400, title="MissingData", message='No image part in the request')
 
@@ -149,6 +156,17 @@ def process_access_request(file, associated_permission):
             
             
 def update_user_details(user_id, name, permissions_list, files, cache):
+    """
+    Partially update the details of an existing user.
+    Args:
+        user_id (int): The ID of the user to update.
+        name (str, optional): The new name of the user.
+        permissions_list (list, optional): List of new permission levels for the user.
+        files (werkzeug.datastructures.FileStorage, optional): The file storage object containing the uploaded image files.
+    Returns:
+        dict: A dictionary containing flags 'is_name', 'is_permission', and 'is_file' indicating what was updated.
+        Response: A Flask Response object containing an error message if any error occurs.
+    """
     is_name = False
     is_permission = False
     is_file = False
@@ -213,6 +231,18 @@ def update_user_details(user_id, name, permissions_list, files, cache):
             
             
 def register_new_user(name, files, permissions_list):
+    """
+    Register a new user by uploading an image and assigning permissions.
+
+    Args:
+        name (str): The name of the user.
+        files (werkzeug.datastructures.FileStorage): The file storage object containing the uploaded image files.
+        permissions_list (list): List of permission levels for the user.
+
+    Returns:
+        dict: A dictionary containing 'name' and 'user_id' if successful.
+        Response: A Flask Response object containing an error message if any error occurs.
+    """
     if not name:
         return create_error_response(400, title="MissingData", message='Name is required')
     if not_string(name):

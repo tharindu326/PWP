@@ -3,22 +3,16 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from flask import Flask, request, jsonify, render_template, Response
 from config import cfg
-from services.access_log_service import add_access_log, get_user_access_logs, get_access_log
-from services.access_request_service import log_access_request, get_user_access_requests, get_access_request
-from services.permission_service import add_permission_to_user, validate_access_for_user, get_user_permissions
-from services.user_service import delete_user_profile, get_user_profile, update_user_facial_data, \
-    get_users_by_name, update_user_name
-import numpy as np
-import cv2
-from face_engine.classifier import Classifier
+from services.access_log_service import get_user_access_logs, get_access_log
+from services.access_request_service import get_user_access_requests, get_access_request
+from services.permission_service import get_user_permissions
+from services.user_service import delete_user_profile, get_user_profile, get_users_by_name
 from utils import *
 from flask_caching import Cache
 from flasgger import Swagger
 from database_models import db
 from mason import IdentityBuilder, create_error_response, MASON
 import json
-
-classifier = Classifier()
 
 
 def create_app():

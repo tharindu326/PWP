@@ -1,6 +1,5 @@
 <template>
   <div>
-    <h1>Profile</h1>
     <div v-html="profileContent"></div>
   </div>
 </template>
@@ -9,7 +8,7 @@
 import axios from 'axios';
 
 export default {
-  name: 'UserProfile',
+  name: 'FacePass',
   data() {
     return {
       profileContent: ''

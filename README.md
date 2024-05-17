@@ -12,23 +12,28 @@ The primary function of this API is to process and match facial images against a
 For example, in a smart building setup, this API could be integrated with an overarching building management system. It would provide the facial recognition capabilities required for access, while the building management system handles user permissions, access scheduling, and physical security protocols.
 
 ## Setup
-To start with the web application, run the following command
+This project has been set up using python 3.8.10. To start with the web application, run the following command
 ```
 pip3 install -r requirements.txt
 ```
 
-## Populate DB
-To populate the DB run the application once using the following command
+## Run on Local Server
+To populate the DB and run the application server use the following command:
 ```
 python3 app.py
 ```
 The generated database file can be found inside ```instance``` folder as ```FacePass.db```
 
-## Run on Local Server
-You can run the application locally by running the following command. No endpoints are currently available for testing.
+The server shall start on http://127.0.0.1:8080
+
+## Client App
+The client has been developed in VueJS which requires NodeJS. Run the following commands to setup client:
 ```
-flask run
+cd vue-app
+npm install
+npm run serve
 ```
+The client will run on the next available port after 8080. Once it starts, you can access the client at http:127.0.0.1:8081 usually.
 
 ## Running Tests and Generating Coverage Report
 

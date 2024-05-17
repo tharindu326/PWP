@@ -1,8 +1,8 @@
-deepface
+deepface==0.0.75
 easydict
 Flask
 flask_sqlalchemy==3.1.1
-keras==2.14.0
+keras==2.4.3
 numpy
 opencv_python==4.8.0.76
 opencv_python_headless==4.8.1.78
@@ -20,3 +20,4 @@ pefile
 joblib
 sklearn
 scikit-learn
+tensorflow==2.3.0

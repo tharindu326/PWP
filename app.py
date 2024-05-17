@@ -12,6 +12,7 @@ from flask_caching import Cache
 from flasgger import Swagger
 from database_models import db
 from mason import IdentityBuilder, create_error_response, MASON
+from flask_cors import CORS
 import json
 
 
@@ -23,6 +24,7 @@ def create_app():
         app (Flask): The configured Flask application.
     """
     app = Flask(__name__)
+    CORS(app)
     app.config['SQLALCHEMY_DATABASE_URI'] = cfg.db.SQLALCHEMY_DATABASE_URI
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = cfg.db.SQLALCHEMY_TRACK_MODIFICATIONS
     app.config['UPLOAD_FOLDER'] = cfg.db.database
